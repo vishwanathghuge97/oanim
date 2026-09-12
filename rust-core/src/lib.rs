@@ -107,6 +107,7 @@ fn step_form(
     k: f32,
     c: f32,
     boost: f32,
+    damp: f32,
 ) -> PyResult<(f32, f32)> {
     let pos_s = pos.as_slice_mut()?;
     let vel_s = vel.as_slice_mut()?;
@@ -161,8 +162,8 @@ fn step_form(
             let mut vy = v[1];
             vx += (fx * 0.35 + dx * ka - vx * ca) * dtf;
             vy += (fy * 0.35 + dy * ka - vy * ca) * dtf;
-            vx *= 0.985;
-            vy *= 0.985;
+            vx *= damp;
+            vy *= damp;
             let sp = (vx * vx + vy * vy).sqrt();
             let s = (cap / sp.max(1e-6)).min(1.0);
             vx *= s;

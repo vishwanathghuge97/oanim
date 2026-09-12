@@ -85,3 +85,20 @@
   drive/loop), all frame-checked. README recipes added.
 * Bench stays green (splat 36-43x exact; step 1.5x, ≤1.2e-04). Full draft +
   fallback + CLI preview re-verified after every engine change.
+
+## 2026-09-12 — Hero reel + two engine bugfixes
+
+* `scenes/hero.py`: 5-act capacity reel (ember hook / bloom→tree growth /
+  DLA lightning / flock+scatter / beat-sync wordmark), concat to `hero.mp4`
+  (25.3s, 960x540@30, ~30s wall). Every act frame-verified.
+* **Bug: multi-form retarget.** `form()` closures read `self.targets/_nx/_dur`
+  at render time, so a second `form()` silently retargeted the first phase
+  (bloom phase grew the tree). Fixed: capture per-call copies in the closure.
+  Same latent hazard noted for `flock()` (reads `self.*` live) — single use OK.
+* **Bug: fps-dependent damping.** Per-frame `vel *= 0.985/0.93` made 30fps morphs
+  slower than 15fps previews. Fixed: `damp=0.985**(dt*30)` through the fused
+  kernel (new param, default preserves old 30fps behavior bit-exactly).
+* Growth pacing measured: dist 339→97 (text), 313→79 (bloom), 355→139 (branch)
+  over 2s — hero gives growth acts 2.6–2.8s.
+* Parity re-verified after fixes: frames 0–120 bit-identical rust-vs-numpy,
+  late sparkle grain ≤29 (same known 1e-4 drift, visually identical).

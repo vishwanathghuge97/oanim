@@ -37,7 +37,7 @@ def _as_f32_c(a):
 
 
 def step_form(pos, vel, targets, nx, rand, ts, t_glob, dt, sweep, form_dur,
-              k=46.0, c=7.2, boost=1.0):
+              k=46.0, c=7.2, boost=1.0, damp=0.985):
     """One fused morph step, in place. Returns (mean_act, mean_dist)."""
     if HAS_RUST:
         P = _as_f32_c(pos)
@@ -47,7 +47,7 @@ def step_form(pos, vel, targets, nx, rand, ts, t_glob, dt, sweep, form_dur,
         R = _as_f32_c(rand)
         out = _rc.step_form(P, V, T, X, R, float(ts), float(t_glob), float(dt),
                             float(sweep), float(form_dur), float(k), float(c),
-                            float(boost))
+                            float(boost), float(damp))
         for dst, src in ((pos, P), (vel, V)):
             if dst is not src:
                 dst[:] = src
@@ -60,7 +60,7 @@ def step_form(pos, vel, targets, nx, rand, ts, t_glob, dt, sweep, form_dur,
     to_t = targets - pos
     vel += (v_flow * 0.35 + to_t * (k * act[:, None])
             - vel * (c * act[:, None])) * dt
-    vel *= 0.985
+    vel *= damp
     sp = np.linalg.norm(vel, axis=1, keepdims=True)
     cap = 460 - 260 * float(np.mean(act))
     vel *= np.minimum(1.0, cap / np.maximum(sp, 1e-6))

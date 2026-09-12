@@ -301,7 +301,7 @@ class FlowParticles:
             e = float(drive.energy(t)) if drive is not None else 0.0
             v = flow_field(self.pos, t) * (1.0 + 1.6 * e)
             self.vel += v * 0.35 * dt
-            self.vel *= 0.93
+            self.vel *= 0.93 ** (dt * 30)  # fps-independent damping
             sp = np.linalg.norm(self.vel, axis=1, keepdims=True)
             self.vel *= np.minimum(1.0, (420.0 + 300.0 * e) / np.maximum(sp, 1e-6))
             self.pos += self.vel * dt
@@ -327,27 +327,31 @@ class FlowParticles:
         self._form_k = float(k)
         self._form_c = float(c)
         self._drive = drive
+        # Capture per-call copies: a second form() must not retarget this phase.
+        _targ, _nx, _sw, _dur = self.targets, self._nx, sweep, duration
+        _k, _c, _drv = float(k), float(c), drive
 
         def fn(state, t, dt, _t0=[None]):
             if _t0[0] is None:
                 _t0[0] = t  # phase start time
             ts = t - _t0[0]
-            e = float(drive.energy(t)) if drive is not None else 0.0
+            e = float(_drv.energy(t)) if _drv is not None else 0.0
             # Fused kernel (Rust, numpy fallback): flow + spring + integrate.
             mean_act, dist = step_form(
-                self.pos, self.vel, self.targets, self._nx, self._rand,
-                ts, t, dt, self._sweep, self._form_dur,
-                k=self._form_k, c=self._form_c, boost=1.0 + 1.2 * e)
+                self.pos, self.vel, _targ, _nx, self._rand,
+                ts, t, dt, _sw, _dur,
+                k=_k, c=_c, boost=1.0 + 1.2 * e,
+                damp=0.985 ** (dt * 30))  # fps-independent damping
             # convergence-driven text reveal: ghost only when dust arrives
             # 0 far -> 1 close, smooth
             closeness = float(np.clip((130.0 - dist) / 85.0, 0.0, 1.0))
             closeness = closeness * closeness * (3 - 2 * closeness)
-            p = ts / max(1e-6, self._form_dur)
+            p = ts / max(1e-6, _dur)
             prog = float(p * p * (3 - 2 * p)) if p < 1 else 1.0
             # require BOTH progress and actual arrival
             alpha = min(prog, closeness) * 0.95
             state["flow_w"] = float(
-                1.0 - smoothstep(0.0, self._form_dur * 0.6, ts) * 0.95)
+                1.0 - smoothstep(0.0, _dur * 0.6, ts) * 0.95)
             state["text_alpha"] = alpha
             state["mean_act"] = float(mean_act)
             state["energy"] = e
