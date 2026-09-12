@@ -1,30 +1,17 @@
-# my_videos — YOUR workspace (the tool lives outside this folder)
+# my_videos — your place. Tool stays out.
 
-Everything in here is yours. The engine (`engine/`), examples (`scenes/`),
-and build files are the tool — you never need to touch them.
+**New? Read in this order:**
+1. `LEARN.md` — course: 7 small lessons, run each one (~40 min).
+2. `BUILD.md` — make your own video from zero, step by step.
+3. `CHEATSHEET.md` — every function on one page. Pin it.
 
-New here? Read `LEARN.md` first (15 minutes, plain language).
-
-## Make a video (3 steps)
-
+**Daily use (that's all):**
 ```sh
-./oanim new ep01                  # scaffold my_videos/ep01.py
-# ... edit TITLE / SUBTITLE / theme in ep01.py ...
-./oanim render my_videos/ep01.py --mode preview   # fast check (seconds)
-./oanim render my_videos/ep01.py --mode draft     # full check
-./oanim render my_videos/ep01.py --mode final     # 1080p upload
+./oanim new NAME                              # new video file
+./oanim render my_videos/NAME.py --mode preview   # fast check
+./oanim render my_videos/NAME.py --mode draft     # judge the look
+./oanim render my_videos/NAME.py --mode final     # 1080p upload (set n=4500)
 ```
 
-Each video is one `.py` file; its mp4 + png land next to it.
-`*.mp4` files are never committed to git (thumbnails `.png` are).
-
-## Rules of thumb
-
-* One idea per file: `hook.py`, `chapter2.py`, `outro.py`, …
-* Preview while writing, draft to judge, final once for upload.
-* Final 1080p: use `FlowParticles(n=4500)` (4x pixels need ~3x particles).
-* Vertical Short: add `--mode short` (title auto-shrinks to fit).
-* Voiceover beat-sync: `drv = AudioDrive("vo.wav")`, pass `drive=drv`
-  to `drift`/`form` (see `scenes/showcase.py` DriveClip + README recipes).
-* Recipes for every look (ember hook, growth, flock, loop, …): root `README.md`.
-* Stuck? Copy the closest file in `scenes/` — they are examples, not the tool.
+Your `.py` files are safe here — engine work never touches them.
+Your `.mp4` files sit next to your scripts and are never committed to git.

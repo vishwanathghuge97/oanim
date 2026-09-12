@@ -12,7 +12,7 @@ one takes about 5 minutes.
 
 ## Lesson 0 — the 3 words you need (2 minutes, no running)
 
-Open `lesson1.py` and find these lines. Everything else is scaffolding you
+Open `lesson1.py` and find these lines. Everything else is setup lines you
 can ignore for now:
 
 ```python
@@ -281,7 +281,8 @@ drv = AudioDrive("vo.wav")   # your voiceover or music
 
 ![Lesson 7 result](learn_frames/l7_pulse.png)
 
-> Checkpoint: you know what `drive=` does and the two drive flavors. You
+> Checkpoint: you know what `drive=` does and the two kinds of beat
+> (fake pulse vs your sound file). You
 > now know the whole tool. Graduate below.
 
 ---

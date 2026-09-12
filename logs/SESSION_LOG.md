@@ -220,3 +220,22 @@
   verbatim in doc; 11 excerpt lines substring-verified against lesson files.
 * L3/L4 frames visually confirmed (radial burst mid-scatter; ember trails +
   crisp subtitle). Tmp lesson scaffolding removed.
+
+## 2026-09-12 — Docs v2: plain words + BUILD guide + CHEATSHEET
+
+* User verdict: docs used heavy words, missed function meanings, no
+  from-zero path, no cheatsheet; old fragmented docs had to go.
+* New set in `my_videos/`: `LEARN.md` (course, simplified: scaffolding→
+  setup lines, flavors→kinds, loop recipe fixed earlier), `BUILD.md`
+  (from-zero in 6 steps: paper plan → words → dust → moments one at a
+  time → mood → draft/final; 3 ready patterns; playground rules),
+  `CHEATSHEET.md` (every function: plain meaning + inputs/defaults + tiny
+  example; 5 numbers to memorize). README rewritten as a 10-line index
+  (old content folded in, not lost).
+* Proof: `build_demo.py` (words→flower→burst, kept runnable) rendered via
+  documented flow; frame `learn_frames/build_bloom.png` committed. All 12
+  BUILD step lines substring-verified against the file (caught a drift:
+  camera line was doc-only → added to the file, re-rendered, frame updated).
+  Cheatsheet defaults cross-checked to engine signatures (Text tracking=14,
+  flock radius/sep/ali, MODES sizes, Scene kwargs); all lesson/demo files
+  compile-clean.
