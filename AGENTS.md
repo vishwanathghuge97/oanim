@@ -9,8 +9,12 @@ Read `README.md` and `logs/SESSION_LOG.md` before changing anything.
   `UV_CACHE_DIR=tmp/uv-cache`, `TMPDIR=tmp/`.
 * **All temp/generated files go in `tmp/`.** Renders, wheels, frame dumps,
   toolchains, vendor dirs. `tmp/` is git-ignored.
-* **User API is frozen unless the user asks.** `scenes/*.py` express intent
-  (`drift`/`form`/`hold`); keep them short. Engine changes must not break them.
+* **One API, plain words.** The user surface is `Video` verbs
+  (`drift`/`show`/`grow`/`follow`/`rest`/`burst`/`mood`/`music`/`pulse`) +
+  `Shape`s (`Bloom`/`Branch`/`Lightning`/custom). No aliases, no kept-old
+  names — migrate everything together (scenes + course + my_videos +
+  docs) and prove it with renders. Underscore names (`_Text`, `_Dust`,
+  …) are engine insides, never docs.
   Personal videos live in `my_videos/` (scaffolded by `./oanim new`) — never
   edit or move them during engine work; verify with copies in `tmp/` instead.
   Course files in `course/` (lessons + learning docs) are runnable teaching
@@ -34,22 +38,21 @@ Read `README.md` and `logs/SESSION_LOG.md` before changing anything.
 
 ## 3. Architecture notes
 
-* `Scene.__init__` publishes `W,H,FPS` globals so `FlowParticles`/`Text` created in
-  `construct()` follow the render mode. `Text.render_mask(w=None,h=None)` resolves dims
-  at call time (defaults bind at def time — do not use `w=W` defaults for dims).
+* `Video.__init__` publishes `W,H,FPS` globals so dust/words made in
+  `build()` follow the render mode. `show()`/`grow()`/`follow()` accept words
+  or Shapes; dots auto-picked by mode (`seed`/`dots` class lines override).
 * Morph design: per-particle staggered activation (`nx*sweep + rand`), underdamped
   spring (k≈46, c≈7.2), flow decays over first 60% of `form()`. Text reveal alpha =
   `min(progress, closeness)` where closeness tracks actual mean particle distance —
   never time-only (that caused the old "ghost pop").
-* `Targets` base (`Bloom`/`Branch`/`DLA`/`Text`): `sample_targets()` + optional
-  `order` array for reveal sequence; `mask=None` skips the solid-text composite.
-  `form()`/`flock()` accept any Targets. Particle arrays must stay C-contiguous
+* `Shape` base (`Bloom`/`Branch`/`Lightning`/custom): `points()` + optional
+  `order` array for reveal sequence. Particle arrays must stay C-contiguous
   float32 (Rust slices) — never store `.T` views in `pos`/`vel`/`targets`.
-* `engine/audio.py` is dep-free (ffmpeg PCM pipe + numpy RMS). `Scene._draw`
+* `engine/audio.py` is dep-free (ffmpeg PCM pipe + numpy RMS). `Video._draw`
   reads `state["energy"]`; phases set it from `drive.energy(t)` or leave 0.
 * Themes live in `THEMES` (`ink` default); `_draw` derives all colors from them.
   `motion_blur` adds a second tail stamp along `-vel` (0 = off, keeps parity).
-* `Camera` is a 2.5D crop-zoom applied post-composite in `_draw` (~2ms/frame).
+* `_Camera` is a 2.5D crop-zoom applied post-composite in `_draw` (~2ms/frame).
 * VAAPI encode is dead on this Mesa (no encode profiles) — don't re-add it without
   re-testing `ffmpeg ... -c:v h264_vaapi` on a testsrc first.
 

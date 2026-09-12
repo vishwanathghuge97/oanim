@@ -1,12 +1,12 @@
 #!/home/vishwanath/Desktop/exp/.venv/bin/python
-"""oanim CLI — living titles for storytellers.
+"""oanim — make living titles.
 Usage:
-  ./oanim new ep01                                # scaffold my_videos/ep01.py
-  ./oanim render scenes/template.py --mode preview --encoder cpu
-  ./oanim render scenes/template.py --mode draft --out demo_cli.mp4
-  ./oanim render scenes/template.py --mode short --out short.mp4
-All temp/cache stays inside ./tmp (never system-wide).
-Your videos live in ./my_videos (never touch engine/ or scenes/).
+  ./oanim new ep01                              # new video file in my_videos/
+  ./oanim render my_videos/ep01.py --mode preview   # fast check
+  ./oanim render my_videos/ep01.py --mode draft     # judge the look
+  ./oanim render my_videos/ep01.py --mode final     # 1080p upload
+Modes: preview (fast) / draft / final (1080p) / short (vertical).
+Your videos live in ./my_videos. The tool lives in engine/ + scenes/.
 """
 import os
 import re
@@ -29,11 +29,11 @@ def cmd_render(args):
     spec = importlib.util.spec_from_file_location("user_scene", scene_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    from engine.api import Scene
+    from engine.api import Video
     found = [v for v in vars(mod).values()
-             if isinstance(v, type) and issubclass(v, Scene) and v is not Scene]
+             if isinstance(v, type) and issubclass(v, Video) and v is not Video]
     if not found:
-        print("no Scene subclass found in", scene_path)
+        print("no video found in", scene_path, "(a class like: class Mine(Video): ...)")
         return 2
     cls = found[0]
     if args.out:
@@ -42,8 +42,8 @@ def cmd_render(args):
         # default: next to the scene file (my_videos/ep01.py -> my_videos/ep01.preview.mp4)
         base = os.path.splitext(os.path.basename(scene_path))[0]
         out = os.path.join(os.path.dirname(scene_path), f"{base}.{args.mode}.mp4")
-    print(f"oanim: {cls.__name__} -> {out} [{args.mode}/{args.encoder}]")
-    cls(out=out, mode=args.mode, encoder=args.encoder).construct_and_render()
+    print(f"oanim: {cls.__name__} -> {out} [{args.mode}]")
+    cls(save=out, mode=args.mode, encoder=args.encoder).run()
     return 0
 
 
@@ -61,18 +61,18 @@ def cmd_new(args):
     with open(os.path.join(ROOT, "scenes", "template.py")) as f:
         src = f.read()
     cls = "".join(w.capitalize() for w in fname.split("_")) or "MyVideo"
-    src = src.replace('"""oanim starter — copy this file for every new video."""',
-                      f'"""{fname} — my video. Edit TITLE/SUBTITLE/theme, then:\n'
+    src = src.replace('"""oanim starter — your video starts here. Change the words, then:\n'
+                      '  ./oanim render scenes/template.py --mode preview\n'
+                      '"""',
+                      f'"""{fname} — my video. Change the words, then render it:\n'
                       f'  ./oanim render my_videos/{fname}.py --mode preview\n'
-                      f'  ./oanim render my_videos/{fname}.py --mode final    # 1080p upload\n'
                       f'"""')
-    src = src.replace("class MyVideo(Scene):", f"class {cls}(Scene):")
-    src = src.replace("MyVideo(out=out, mode=a.mode, encoder=a.encoder)",
-                      f"{cls}(out=out, mode=a.mode, encoder=a.encoder)")
-    src = src.replace('ap.add_argument("--out", default="my_video.mp4")',
-                      f'ap.add_argument("--out", default="{fname}.mp4")')
-    src = src.replace('os.path.join(os.path.dirname(__file__), "..", a.out)',
-                      'os.path.join(os.path.dirname(__file__), a.out)')
+    src = src.replace('prog="oanim template"', f'prog="oanim {fname}"')
+    src = src.replace("class MyVideo(Video):", f"class {cls}(Video):")
+    src = src.replace('MyVideo(save=out, mode=a.mode).run()',
+                      f'{cls}(save=out, mode=a.mode).run()')
+    src = src.replace('ap.add_argument("--out", default="template.preview.mp4")',
+                      f'ap.add_argument("--out", default="{fname}.preview.mp4")')
     with open(dest, "w") as f:
         f.write(src)
     print("NEW", dest)
@@ -87,9 +87,9 @@ def main():
     n.add_argument("name", help="video name (e.g. ep01)")
     n.add_argument("--force", action="store_true",
                    help="overwrite if it exists")
-    r = sub.add_parser("render", help="render a scene file")
-    r.add_argument("scene", help="path to scenes/*.py")
-    r.add_argument("--mode", default="draft", choices=["preview", "draft", "final", "short"])
+    r = sub.add_parser("render", help="make a video file into an mp4")
+    r.add_argument("scene", help="video file, e.g. my_videos/ep01.py")
+    r.add_argument("--mode", default="preview", choices=["preview", "draft", "final", "short"])
     r.add_argument("--encoder", default="cpu", choices=["cpu", "vaapi"])
     r.add_argument("--out", default=None)
     a = ap.parse_args()

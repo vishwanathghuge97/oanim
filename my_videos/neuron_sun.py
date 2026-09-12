@@ -2,23 +2,23 @@
 
 Run:  ./oanim render my_videos/neuron_sun.py --mode preview   # check
       ./oanim render my_videos/neuron_sun.py --mode draft     # keep
-      ./oanim render my_videos/neuron_sun.py --mode final     # 1080p (set n=4500)
+      ./oanim render my_videos/neuron_sun.py --mode final     # 1080p
 """
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import numpy as np
 import engine.api as A
-from engine.api import Scene, FlowParticles, Targets
+from engine.api import Video, Shape
 
 
-class Neuron(Targets):
+class Neuron(Shape):
     """A nerve cell: dense soma ball + dendrite arms growing outward."""
 
     def __init__(self, arms=11, seed=7):
         self.arms, self.seed = arms, seed
 
-    def sample_targets(self, n, seed=7):
+    def points(self, n, seed=7):
         rng = np.random.default_rng(seed)
         cx, cy, R = A.W / 2, A.H / 2, min(A.W, A.H)
         pts, ord_ = [], []
@@ -44,13 +44,13 @@ class Neuron(Targets):
         return np.ascontiguousarray(np.concatenate(pts).astype(np.float32))
 
 
-class PlaneSheet(Targets):
+class PlaneSheet(Shape):
     """A flat sheet of dots — top edge reveals first, like unrolling."""
 
     def __init__(self, seed=8):
         self.seed = seed
 
-    def sample_targets(self, n, seed=8):
+    def points(self, n, seed=8):
         rng = np.random.default_rng(seed)
         cx, cy = A.W / 2, A.H / 2
         w, h = A.W * 0.72, min(A.H * 0.30, 200 * min(A.W, A.H) / 540.0)
@@ -61,13 +61,13 @@ class PlaneSheet(Targets):
         return np.ascontiguousarray(np.stack([xs, ys], axis=1).astype(np.float32))
 
 
-class SunSystem(Targets):
+class SunSystem(Shape):
     """A sun (dense ball) + ring dust + 3 planets, revealed inside-out."""
 
     def __init__(self, seed=9):
         self.seed = seed
 
-    def sample_targets(self, n, seed=9):
+    def points(self, n, seed=9):
         rng = np.random.default_rng(seed)
         cx, cy, R = A.W / 2, A.H / 2, min(A.W, A.H)
         pts, ord_ = [], []
@@ -102,24 +102,19 @@ class SunSystem(Targets):
         return np.ascontiguousarray(np.concatenate(pts).astype(np.float32))
 
 
-class NeuronSun(Scene):
-    def construct(self):
-        neuron = Neuron(arms=11, seed=7)
-        sheet = PlaneSheet(seed=8)
-        sunsys = SunSystem(seed=9)
-        dots = FlowParticles(n=1800, seed=7)
-        self.particles = dots
-        self.text_obj = neuron
-        self.play(dots.drift(duration=5.0))          # void wandering
-        self.play(dots.flock(neuron, duration=3.0))  # gather + chase into neuron
-        self.play(self.hold(duration=1.2))           # neuron flash
-        self.text_obj = sheet
-        self.play(dots.form(sheet, duration=2.4, sweep=1.0))  # dissolve to sheet
-        self.play(self.hold(duration=0.8))
-        self.play(dots.scatter(duration=1.2, power=340.0))    # burst
-        self.text_obj = sunsys
-        self.play(dots.form(sunsys, duration=3.0, sweep=1.0))  # solar system
-        self.play(self.hold(duration=1.5))
+class NeuronSun(Video):
+    dots = 1800
+    seed = 7
+
+    def build(self):
+        self.drift(5.0)                          # void wandering
+        self.follow(Neuron(arms=11), 3.0)        # gather + chase into neuron
+        self.rest(1.2)                           # neuron flash
+        self.grow(PlaneSheet(), 2.4, wave=1.0)   # dissolve to sheet
+        self.rest(0.8)
+        self.burst(1.2)                          # burst
+        self.grow(SunSystem(), 3.0, wave=1.0)    # solar system
+        self.rest(1.5)
 
 
 if __name__ == "__main__":
@@ -128,7 +123,6 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="neuron_sun.mp4")
     ap.add_argument("--mode", default="draft",
                     choices=["preview", "draft", "final", "short"])
-    ap.add_argument("--encoder", default="cpu", choices=["cpu", "vaapi"])
     a = ap.parse_args()
     out = os.path.abspath(os.path.join(os.path.dirname(__file__), a.out))
-    NeuronSun(out=out, mode=a.mode, encoder=a.encoder).construct_and_render()
+    NeuronSun(save=out, mode=a.mode).run()

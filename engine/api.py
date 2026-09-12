@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from engine._core import splat, splat_vals, step_form, HAS_RUST
+from engine.audio import _Audio, _Pulse
 
 W, H, FPS = 960, 540, 30
 
@@ -79,9 +80,9 @@ def _draw_tracked(d, center_x, y, text, font, fill, tracking=10):
     return total
 
 
-class Targets:
-    """Anything particles can form: text, blooms, branches, DLA clusters.
-    Subclasses provide sample_targets(); order attr (0..1) optionally sets
+class Shape:
+    """Anything particles can form: text, blooms, branches, Lightning clusters.
+    Subclasses provide points(); order attr (0..1) optionally sets
     reveal sequence (default: left-to-right sweep). mask None = no solid text."""
 
     mask = None
@@ -91,17 +92,17 @@ class Targets:
     def render_mask(self):
         return None
 
-    def sample_targets(self, n, seed=7):
+    def points(self, n, seed=7):
         raise NotImplementedError
 
 
-class Bloom(Targets):
+class Bloom(Shape):
     """Phyllotaxis spiral bloom. Center-out growth, no text."""
 
     def __init__(self, scale=0.40, jitter=2.0, seed=7):
         self.scale, self.jitter, self.seed = scale, jitter, seed
 
-    def sample_targets(self, n, seed=7):
+    def points(self, n, seed=7):
         rng = np.random.default_rng(seed)
         i = np.arange(n, dtype=np.float32)
         ga = np.pi * (3.0 - np.sqrt(5.0))
@@ -113,13 +114,13 @@ class Bloom(Targets):
         return np.ascontiguousarray(np.stack([x, y], axis=1).astype(np.float32))
 
 
-class Branch(Targets):
+class Branch(Shape):
     """Recursive branching tree grown from bottom-center. Depth-ordered reveal."""
 
     def __init__(self, depth=9, spread=0.55, shrink=0.74, seed=7):
         self.depth, self.spread, self.shrink, self.seed = depth, spread, shrink, seed
 
-    def sample_targets(self, n, seed=7):
+    def points(self, n, seed=7):
         rng = np.random.default_rng(seed)
         segs = []  # (x0,y0,x1,y1,depth)
         stack = [(W / 2, H * 0.96, -np.pi / 2, H * 0.30, 0)]
@@ -151,13 +152,13 @@ class Branch(Targets):
         return np.ascontiguousarray(pts.astype(np.float32))
 
 
-class DLA(Targets):
+class Lightning(Shape):
     """Diffusion-limited aggregation cluster (lightning/coral). Stick-ordered."""
 
-    def __init__(self, sticks=2200, seed=7):
-        self.sticks, self.seed = sticks, seed
+    def __init__(self, pieces=2200, seed=7):
+        self.pieces, self.seed = pieces, seed
 
-    def sample_targets(self, n, seed=7):
+    def points(self, n, seed=7):
         rng = np.random.default_rng(seed)
         gw, gh = 288, 162
         grid = np.zeros((gh, gw), bool)
@@ -168,7 +169,7 @@ class DLA(Targets):
         batch = 500
         stuck = 0
         guard = 0
-        while stuck < self.sticks and guard < 600:
+        while stuck < self.pieces and guard < 600:
             guard += 1
             r0 = radius + 6.0
             a = rng.random(batch) * 2 * np.pi
@@ -183,7 +184,7 @@ class DLA(Targets):
                 dy = np.where(step == 2, 1, np.where(step == 3, -1, 0))
                 px[live] = (px[live] + dx[live]).clip(1, gw - 2)
                 py[live] = (py[live] + dy[live]).clip(1, gh - 2)
-                # kill strays far outside (classic DLA)
+                # kill strays far outside (classic Lightning)
                 far = (px - cx) ** 2 + (py - cy) ** 2 > (3 * r0 + 20) ** 2
                 live[far] = False
                 lx = px[live]
@@ -199,7 +200,7 @@ class DLA(Targets):
                     radius = max(radius, float(np.sqrt(dd)) + 2.0)
                 live[idx] = False
                 stuck += len(new)
-                if stuck >= self.sticks:
+                if stuck >= self.pieces:
                     break
         if not pts:  # degenerate fallback: small disc
             a = rng.random(max(n, 64)) * 2 * np.pi
@@ -222,7 +223,7 @@ class DLA(Targets):
         return np.ascontiguousarray(pts.astype(np.float32))
 
 
-class Text(Targets):
+class _Text(Shape):
     """What the particles will become. User only sets strings."""
 
     def __init__(self, title, subtitle="ORGANIC MOTION", seed=7,
@@ -274,7 +275,7 @@ class Text(Targets):
         self.sub_mask_np = np.asarray(sub_img)
         return img
 
-    def sample_targets(self, n, seed=7):
+    def points(self, n, seed=7):
         if self.mask_np is None:
             self.render_mask()
         ys, xs = np.nonzero(self.mask_np > 100)
@@ -301,7 +302,7 @@ class _Phase:
         self.fn = fn  # fn(state, t_global, dt)
 
 
-class FlowParticles:
+class _Dust:
     """The only thing users animate. drift() then form() = natural morph."""
 
     def __init__(self, n=1500, seed=7):
@@ -337,7 +338,7 @@ class FlowParticles:
         if text.mask_np is None:
             text.render_mask()
         self.text = text
-        self.targets = text.sample_targets(self.n, seed=self.seed)
+        self.targets = text.points(self.n, seed=self.seed)
         # Reveal order: target-provided (growth sequence) or left-to-right sweep.
         if getattr(text, "order", None) is not None and len(text.order) == self.n:
             nx = text.order.astype(np.float32)
@@ -384,11 +385,11 @@ class FlowParticles:
     def flock(self, text, duration=3.0, sweep=1.0, drive=None,
               radius=26.0, sep=90.0, ali=0.9):
         """Boids that stream toward the target shape: separation + alignment
-        on a uniform grid, weak spring home, living flow. Accepts Text/Targets."""
+        on a uniform grid, weak spring home, living flow. Accepts Text/Shape."""
         if text.mask_np is None:
             text.render_mask()
         self.text = text
-        self.targets = text.sample_targets(self.n, seed=self.seed)
+        self.targets = text.points(self.n, seed=self.seed)
         if getattr(text, "order", None) is not None and len(text.order) == self.n:
             nx = text.order.astype(np.float32)
         else:
@@ -490,7 +491,7 @@ class FlowParticles:
         return np.sin(t * 2.0 + self._rand * 6.28) * 0.35
 
 
-class Camera:
+class _Camera:
     """2.5D crop-zoom camera. Cheap: one Pillow crop+resize per frame (~2ms)."""
 
     def __init__(self):
@@ -519,13 +520,16 @@ class Camera:
         return z, float(dx), float(dy)
 
 
-class Scene:
-    """User subclasses this and writes construct() with self.play() calls."""
+class Video:
+    """Your video. Subclass it and write build() with plain moment calls."""
 
-    def __init__(self, out="demo2.mp4", fps=None, w=None, h=None,
-                 mode="draft", encoder="cpu", thumbnail=True,
-                  theme="ink", motion_blur=0.0, reveal="ink",
-                  ink_gain=1.0, ink_sharp=0.45, ink_sigma=9.0):
+    # dots picked by size: small modes stay fast, big modes stay full
+    # (dot count barely changes speed — the paint work sets the pace)
+    DOTS_BY_MODE = {"preview": 1500, "draft": 1500, "short": 2600, "final": 4500}
+
+    def __init__(self, save="video.mp4", fps=None, w=None, h=None,
+                 mode="preview", encoder="cpu", thumbnail=True,
+                 seed=None, dots=None):
         global W, H, FPS
         if mode in MODES:
             m = MODES[mode]
@@ -535,22 +539,34 @@ class Scene:
         w = w or W
         h = h or H
         fps = fps or FPS
-        # publish dims globally so FlowParticles/Text created in construct() follow
+        # publish dims globally so dust/words made in build() follow
         W, H, FPS = w, h, fps
-        self.out = os.path.abspath(out)
+        # settings live on the video: write `seed = 21` in your class,
+        # or pass seed=/dots= here. Same number = same film.
+        if seed is None:
+            seed = getattr(type(self), "seed", 7)
+        if dots is None:
+            dots = getattr(type(self), "dots", None)
+        if dots is None:
+            dots = self.DOTS_BY_MODE.get(mode)
+        if dots is None:
+            dots = int(1500 * (w * h) / (960 * 540))
+        self._seed = seed
+        self._dots_n = dots
+        self.save = os.path.abspath(save)
         self.fps = fps
         self.w, self.h = w, h
         self.mode = mode
         self.encoder = encoder
         self.thumbnail = thumbnail
-        self.theme = THEMES.get(theme, THEMES["ink"])
-        self.motion_blur = float(motion_blur)  # 0 off, ~0.5-1 streaky tails
-        self.reveal = reveal  # ink (baked by particles) | dots | solid (mask)
-        self.ink_gain = float(ink_gain)
-        self.ink_sharp = float(ink_sharp)  # smoothstep center for ink->solid
-        self.ink_sigma = float(ink_sigma)  # deposit radius in draft-px (540p);
+        self.theme = THEMES["ink"]
+        self.motion_blur = 0.0
+        self.reveal = "ink"
+        self.ink_gain = 1.0
+        self.ink_sharp = 0.45
+        self.ink_sigma = 9.0
         # auto-scaled by resolution so one default holds preview->final
-        self.ink_sigma_eff = float(ink_sigma) * (min(w, h) / 540.0)
+        self.ink_sigma_eff = 9.0 * (min(w, h) / 540.0)
         self.ink = np.zeros((h, w), np.float32)  # persistent, never fades
         self.phases = []
         self.canvas = np.zeros((h, w), np.float32)
@@ -558,20 +574,52 @@ class Scene:
         self.particles = None
         self.text_obj = None
         self.camera = None
+        self._beat = None
         self._total = 0.0
-
-    def attach_camera(self, cam):
-        self.camera = cam
-        return cam
 
     def play(self, phase):
         self.phases.append(phase)
         return phase
 
-    def hold(self, duration=1.0):
+    # -- your moments (this is the whole language) --
+    def _dust(self):
+        if self.particles is None:
+            self.particles = _Dust(n=self._dots_n, seed=self._seed)
+        return self.particles
+
+    def drift(self, duration=1.6):
+        """Dust wanders. No words. Start here."""
+        return self.play(self._dust().drift(duration, drive=self._beat))
+
+    def show(self, title, subtitle="", duration=2.6, wave=0.9, tracking=16,
+             weight="Light"):
+        """Dust gathers into your words. The main event."""
+        words = _Text(title, subtitle=subtitle, weight=weight, tracking=tracking)
+        self.text_obj = words
+        return self.play(self._dust().form(words, duration, sweep=wave,
+                                           drive=self._beat))
+
+    def grow(self, shape, duration=2.4, wave=1.0):
+        """Dust grows a shape: Bloom, Branch, Lightning, or your own."""
+        self.text_obj = shape
+        return self.play(self._dust().form(shape, duration, sweep=wave,
+                                           drive=self._beat))
+
+    def follow(self, shape, subtitle="", duration=3.0, wave=1.0, tracking=16,
+               weight="Light"):
+        """Dust moves after each other, then settles. Words or a shape."""
+        if isinstance(shape, str):
+            shape = _Text(shape, subtitle=subtitle, weight=weight,
+                          tracking=tracking)
+        self.text_obj = shape
+        return self.play(self._dust().flock(shape, duration, sweep=wave,
+                                            drive=self._beat))
+
+    def rest(self, duration=1.0):
+        """Words rest on screen, gently alive."""
         p = self.particles
-        # Capture creation-time targets (same retarget hazard as form():
-        # a later form() must not redirect this hold mid-render).
+        # Capture creation-time targets: a later grow() must not redirect
+        # this rest mid-render.
         _targ = (np.ascontiguousarray(p.targets.copy())
                  if (p is not None and p.targets is not None) else None)
 
@@ -583,10 +631,33 @@ class Scene:
                 p.pos += p.vel * dt
                 p.pos[:, 0] += p.settle_jitter(t) * dt * 8
             state["text_alpha"] = min(0.95, state.get("text_alpha", 0.9) + dt * 0.15)
-        return _Phase("hold", duration, fn)
+        return self.play(_Phase("hold", duration, fn))
 
-    def construct_and_render(self):
-        self.construct()
+    def burst(self, duration=1.2, strength=340.0):
+        """Words burst back into dust. End here."""
+        return self.play(self._dust().scatter(duration, power=strength,
+                                              drive=self._beat))
+
+    def mood(self, name="ink", trails=0.0, zoom=None, shake=0.0):
+        """The feeling: ink moonlight, ember fire, bone grey, moss green."""
+        self.theme = THEMES.get(name, THEMES["ink"])
+        self.motion_blur = float(trails)  # 0 off, ~0.5-1 streaky tails
+        if zoom is not None or shake:
+            self.camera = _Camera().push_in(1.0, zoom or 1.0).handheld(shake)
+        return self
+
+    def music(self, path):
+        """Your sound file drives the motion. One call, whole video."""
+        self._beat = _Audio(path)
+        return self
+
+    def pulse(self, bpm=132):
+        """A fake beat for practice. One call, whole video."""
+        self._beat = _Pulse(bpm)
+        return self
+
+    def run(self):
+        self.build()
         return self.render()
 
     # -- rendering (users never touch this) --
@@ -690,7 +761,7 @@ class Scene:
 
     def _write_thumbnail(self, last_frame):
         try:
-            base, _ = os.path.splitext(self.out)
+            base, _ = os.path.splitext(self.save)
             Image.fromarray(last_frame).save(base + ".png")
             print("THUMB", base + ".png")
         except Exception as e:
@@ -699,43 +770,41 @@ class Scene:
     def _maybe_vaapi(self):
         """Transcode CPU mp4 -> VAAPI mp4 offloading encode to 680M."""
         if self.encoder != "vaapi":
-            return self.out
+            return self.save
         dev = "/dev/dri/renderD128"
         if not os.path.exists(dev):
             print("vaapi device missing, keeping cpu encode")
-            return self.out
-        base, _ = os.path.splitext(self.out)
+            return self.save
+        base, _ = os.path.splitext(self.save)
         va = base + ".vaapi.mp4"
         cmd = ["ffmpeg", "-y", "-v", "error",
-               "-vaapi_device", dev, "-i", self.out,
+               "-vaapi_device", dev, "-i", self.save,
                "-vf", "format=nv12,hwupload",
                "-c:v", "h264_vaapi", "-qp", "23",
                "-movflags", "+faststart", va]
         try:
-            subprocess.run(cmd, check=True, cwd=os.path.dirname(self.out) or ".")
+            subprocess.run(cmd, check=True, cwd=os.path.dirname(self.save) or ".")
             print("VAAPI", va)
             return va
         except Exception as e:
             print("vaapi fallback:", e)
-            return self.out
+            return self.save
 
     def render(self):
         import imageio.v2 as imageio
-        os.makedirs(os.path.dirname(self.out) or ".", exist_ok=True)
+        if not self.phases:
+            print("Empty video: your build() has no moments. Add one line,")
+            print("for example:  self.drift(1.0)")
+            return self.save
+        os.makedirs(os.path.dirname(self.save) or ".", exist_ok=True)
         self._total = sum(p.duration for p in self.phases)
         self.canvas.fill(0)  # fresh buffers every render (repeat-safe)
         self.ink.fill(0)
-        w = imageio.get_writer(self.out, fps=self.fps, codec="libx264",
+        w = imageio.get_writer(self.save, fps=self.fps, codec="libx264",
                                quality=8, macro_block_size=2,
                                ffmpeg_params=["-pix_fmt", "yuv420p", "-movflags", "+faststart"])
         dt = 1.0 / self.fps
         t, frame = 0.0, 0
-        # find particles + text refs
-        for ph in self.phases:
-            fn = ph.fn
-            # duck-type: FlowParticles phases close over self; grab via defaults is hard,
-            # so user sets scene.particles explicitly in construct()
-            pass
         for ph in self.phases:
             steps = int(ph.duration * self.fps)
             for _ in range(steps):
@@ -749,7 +818,7 @@ class Scene:
                 if frame % 30 == 0:
                     print(f"[{frame}] t={t:.1f}s phase={ph.name}", flush=True)
         w.close()
-        print("WROTE", self.out)
+        print("WROTE", self.save)
         if self.thumbnail:
             try:
                 self._write_thumbnail(last)

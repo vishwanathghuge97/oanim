@@ -314,6 +314,32 @@
   the logged late-frame sparkle; parity promise holds per-binary. Added one
   honest line to `course/IDEAS.md` (your grain may differ slightly).
 
+## 2026-09-12 — One API in plain words (clean break, no duplication)
+
+* User rules: single way to do everything, no kept-old names (no outside
+  users to protect), built from user words. Replaced, not added alongside.
+* New surface (`engine/api.py`): `Video` + verbs `drift/show/grow/follow/
+  rest/burst/mood/music/pulse` (+`play`), `Shape` base with `points()` +
+  `order`, `Bloom/Branch/Lightning` (`DLA(sticks)`→`Lightning(pieces)`).
+  Dots auto by size (1500/1500/2600/4500), `seed=`/`dots=` as class lines
+  or ctor args. Beat set once per video. `save=` replaces `out=`, default
+  mode `preview`. Empty `build()` prints a plain message, not a traceback.
+  Old names gone (underscore insides: `_Text/_Dust/_Camera/_Pulse/_Audio`);
+  kernels, audio math, Rust untouched.
+* Migrated everything: scenes (template/demo2/showcase/hero), course
+  (7 lessons + build_demo + task_chapter, now tiny), neuron_sun (custom
+  Shapes use `points()`), oanim (finds `Video`, `.run()`, preview default,
+  fixed scaffold docstring bug found by reading output). Deleted
+  `engine/mini.py`, `scenes/demo1.py`, `demo1.mp4` (dead era).
+* Proof: demo2 new-vs-old-API **bit-identical all 156 frames**; hero acts
+  1–4 identical, act 5 re-baselined (zoom start 1.02→1.0, intentional);
+  7/9 lesson frames identical (l4 = known rebuild luck, build = bugfix
+  now correct); fallback identical to frame 120 (≤24 grain); benches
+  green; scaffold→render→cleanup loop verified; zero old names in user
+  files, docs, or engine surface (grep-proven). Docs rewritten to new API
+  with snippet checks green. `oanim new` default template is the 3-line
+  video now.
+
 ## 2026-09-12 — Perf Q&A: where render time really goes (measured)
 
 * User asked if the engine is slow. Profiled draft/n=1500 per-frame means:

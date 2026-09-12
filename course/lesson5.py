@@ -1,23 +1,20 @@
-"""Lesson 5: free variations (seed + sweep)."""
+"""Lesson 5: free variations (seed + wave)."""
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from engine.api import Scene, Text, FlowParticles
+from engine.api import Video
 
 
-class Lesson5(Scene):
-    def construct(self):
-        title = Text("GROWTH", subtitle="ORGANIC MOTION",
-                     weight="Light", tracking=16)
-        dots = FlowParticles(n=1500, seed=21)
-        self.particles = dots
-        self.text_obj = title
-        self.play(dots.drift(duration=1.6))
-        self.play(dots.form(title, duration=2.6, sweep=0.4))
-        self.play(self.hold(duration=1.0))
+class Lesson5(Video):
+    seed = 21
+
+    def build(self):
+        self.drift(1.6)
+        self.show("GROWTH", "ORGANIC MOTION", 2.6, wave=0.4)
+        self.rest(1.0)
 
 
 if __name__ == "__main__":
     out = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                        "lesson5.preview.mp4"))
-    Lesson5(out=out, mode="preview", thumbnail=False).construct_and_render()
+    Lesson5(save=out, mode="preview").run()

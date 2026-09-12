@@ -2,44 +2,41 @@
 
 Look up values here. Learn in `01_LEARN.md`. Do jobs in `02_TASKS.md`.
 
-## Things
+## Your video
 
-`Text(title, subtitle="ORGANIC MOTION", seed=7, weight="Light", tracking=14)`
-`FlowParticles(n=1500, seed=7)`
-`Scene(out=..., mode="draft", encoder="cpu", thumbnail=True, theme="ink", motion_blur=0.0, reveal="ink", ink_gain=1.0, ink_sharp=0.45, ink_sigma=9.0)`
+`class Mine(Video):` + `def build(self):` with moment lines.
+`Video(save=..., mode="preview", encoder="cpu", thumbnail=True)`
+`seed = 21` / `dots = 900` lines in your class (same number = same film;
+dots picked by size if you skip it: 1500 practice, 2600 short, 4500 final).
 
 ## Moments
 
-`drift(duration=1.8, drive=None)`
-`form(text, duration=2.4, sweep=1.1, k=46.0, c=7.2, drive=None)`
-`flock(text, duration=3.0, sweep=1.0, drive=None, radius=26.0, sep=90.0, ali=0.9)`
-`hold(duration=1.0)`
-`scatter(duration=1.6, sweep=0.8, power=300.0, drive=None)`
+`drift(seconds)` — dust wanders, no words.
+`show(title, subtitle="", duration=2.6, wave=0.9, tracking=16, weight="Light")` — words appear.
+`grow(shape, duration=2.4, wave=1.0)` — a shape grows.
+`follow(shape or "WORDS", subtitle="", duration=3.0, wave=1.0, tracking=16)` — dust moves after each other, then settles.
+`rest(seconds)` — words rest.
+`burst(seconds, strength=340.0)` — words burst into dust (`150` sigh … `600` boom).
 
-## Looks
+## Feeling
 
-`theme`: `ink` / `ember` / `bone` / `moss`. `motion_blur`: `0.0` off … `~1.0` strong.
-`reveal`: `ink` / `dots` / `solid` (default `ink`, leave it).
-`Camera().push_in(z0=1.0, z1=1.08)` · `.pull_out(z0=1.08, z1=1.0)` · `.handheld(amp=2.0)`
+`mood("ink")` — moonlight (default). `"ember"` fire · `"bone"` grey · `"moss"` green.
+`mood("ember", trails=0.6, zoom=1.06, shake=1.2)` — trails `0` off … `~1` strong; zoom-in + tiny shake.
+`music("vo.wav")` — your sound drives all moments. `pulse(132)` — fake beat for practice.
 
-## Shapes (use inside `form` instead of `Text`)
+## Shapes (inside `grow`, or `follow`)
 
-`Bloom(scale=0.40, jitter=2.0, seed=7)`
-`Branch(depth=9, spread=0.55, shrink=0.74, seed=7)`
-`DLA(sticks=2200, seed=7)`
-
-## Beat
-
-`SineDrive(bpm=100.0, base=0.25, amp=0.75)`
-`AudioDrive(path, sr=22050, win=0.12, gain=1.0)` — plug in with `drive=`.
+`Bloom(scale=0.40, jitter=2.0, seed=7)` — flower.
+`Branch(depth=9, spread=0.55, shrink=0.74, seed=7)` — tree.
+`Lightning(pieces=2200, seed=7)` — lightning.
+Own shape: subclass `Shape`, write `points(n)` returning dots + `self.order`. See `neuron_sun.py`.
 
 ## Sizes
 
 `preview` 640×360@15 · `draft` 960×540@30 · `final` 1920×1080@30 · `short` 720×1280@30.
-Practice `n=1500`, final `n=4500`.
 
 ## Commands
 
 `./oanim new NAME` · `./oanim render FILE --mode preview|draft|final|short`
-`--out PATH` (default: beside the script) · `--encoder cpu|vaapi` (vaapi dead on this machine, `cpu` works)
-`Scene.render_loop(blend=0.6)` for seamless loops (call after `construct()`, not `construct_and_render()`).
+`--out PATH` (default: beside the script).
+`Video.render_loop(blend=0.6)` for seamless loops (call after `build()`, not `run()`).

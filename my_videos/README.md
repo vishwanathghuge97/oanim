@@ -7,7 +7,7 @@ It makes your first video in 5 minutes. Come back after.
 ./oanim new NAME                              # new video file, lands here
 ./oanim render my_videos/NAME.py --mode preview   # fast check
 ./oanim render my_videos/NAME.py --mode draft     # judge the look
-./oanim render my_videos/NAME.py --mode final     # 1080p upload (n=4500)
+./oanim render my_videos/NAME.py --mode final     # 1080p upload
 ```
 
 Your `.py` files are safe here — tool work never touches them.

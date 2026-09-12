@@ -2,28 +2,25 @@
 
 Read when curious. Not needed to make videos.
 
-**A video = words + dust + time plan.** Dust are 1500 dots that wander.
-`form` pulls each dot to a point of your word. The word appears because
-dots arrive — never pasted on top. That is why it looks alive.
+**A video = words + moments.** Dots wander until `show` pulls each one to
+a point of your word. The word appears because dots arrive — never pasted
+on top. That is why it looks alive.
 
 **Seed = which random pattern.** Same seed → same film, every time. New
 seed → same words, new dust art. There is no best seed. Try numbers. (Your
 grain may differ a little from the pictures here — same words, same motion,
 only the tiny dots land in new spots.)
 
-**Sweep = the letter wave.** Each dot waits its turn by letter position,
+**Wave = the letter wave.** Each dot waits its turn by letter position,
 then flies. `0` = no wait (all together). `1.2` = long wait (slow wave).
 
-**1080p needs more dots.** Four times the pixels, same 1500 dots = thin
-letters. `n=4500` keeps the same full look. Small screens need fewer.
+**Big videos get more dots.** Four times the pixels need more dots or
+letters go thin. The tool counts by size (1500 practice, 4500 final), so
+you never think about it. Write `dots = 900` in your class only to force it.
 
-**Drive = a loudness wire.** Each moment reads a number 0–1.5 (quiet to
-loud) and turns it into stronger flow + brighter dots. `SineDrive` fakes
-the numbers with a pulse. `AudioDrive` reads them from your sound file.
-
-**Ink = letters painted by dots.** Where dots settle, white stays. Where
-they never land, black stays. Subtitle is drawn crisp because thin lines
-are too small for dots to paint well.
+**Music = a loudness wire.** One call (`music` or `pulse`) sets a number
+for the whole video: 0 quiet … 1.5 loud. Louder = stronger flow + brighter
+dots. Sound is never saved in the mp4 — the tool makes silent film.
 
 **Modes = same film, new size.** Preview is small and fast for practice.
 Draft judges the true look. Final is the upload. Short turns it vertical.

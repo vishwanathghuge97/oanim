@@ -1,9 +1,11 @@
-"""Audio energy drive for oanim. No new deps: ffmpeg decodes, numpy analyzes.
+"""Sound drives motion. No new deps: ffmpeg decodes, numpy analyzes.
 
-Usage:
-    drive = AudioDrive("voiceover.wav")          # or Drive.sine(bpm=100)
-    dots.drift(4.0, drive=drive)
-Audio maps to flow strength + stamp brightness (see Scene._draw `energy`).
+Users never touch this file. In your video, write one line:
+
+    self.music("voiceover.wav")   # your sound file, whole video follows it
+    self.pulse(132)               # or a fake beat for practice
+
+Louder beat = stronger flow + brighter dots (see Video._draw `energy`).
 """
 import subprocess
 import numpy as np
@@ -19,7 +21,7 @@ def _pcm_mono(path, sr=22050):
     return x, sr
 
 
-class AudioDrive:
+class _Audio:
     """RMS-energy envelope 0..~1.5 sampled at video time t."""
 
     def __init__(self, path, sr=22050, win=0.12, gain=1.0):
@@ -45,7 +47,7 @@ class AudioDrive:
         return float(self.env[i]) * self.gain
 
 
-class SineDrive:
+class _Pulse:
     """Dependency-free pulsing drive for tests / music-less videos."""
 
     def __init__(self, bpm=100.0, base=0.25, amp=0.75):

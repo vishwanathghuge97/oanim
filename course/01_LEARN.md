@@ -6,24 +6,20 @@ Every picture is a real frame from running them.
 
 ---
 
-## Lesson 0 — three things (2 minutes, no running)
+## Lesson 0 — three lines (2 minutes, no running)
 
-Open `lesson1.py`. Find these lines:
+Open `lesson1.py`. The whole video is this:
 
 ```python
-title = Text("GROWTH", subtitle="ORGANIC MOTION",
-             weight="Light", tracking=16)
-dots = FlowParticles(n=1500, seed=7)
-self.play(dots.drift(duration=1.6))
-self.play(dots.form(title, duration=2.6, sweep=0.9))
-self.play(self.hold(duration=1.0))
+        self.drift(1.6)
+        self.show("GROWTH", "ORGANIC MOTION", 2.6)
+        self.rest(1.0)
 ```
 
-- `title` = your words.
-- `dots` = your dust (1500 moving dots).
-- `play(...)` lines = your time plan. Wander 1.6s, gather 2.6s, rest 1.0s.
+- `show(...)` = your words. The line holds the title, the small line, the seconds.
+- `drift` / `rest` = the time plan. Wander 1.6s, words 2.6s, rest 1.0s.
 
-Words + dust + time plan. That is all there is. Go to Lesson 1.
+Words + moments. That is all there is. Go to Lesson 1.
 
 ---
 
@@ -49,11 +45,10 @@ preview while you work, draft to judge, final once. Next lesson.
 
 ## Lesson 2 — your words (5 minutes)
 
-Goal: your words on screen. Open `lesson2.py`. Only the words changed:
+Goal: your words on screen. Open `lesson2.py`. One line holds everything:
 
 ```python
-        title = Text("DREAM", subtitle="EPISODE ONE",
-                     weight="Light", tracking=18)
+        self.show("DREAM", "EPISODE ONE", 2.6, tracking=18)
 ```
 
 ```sh
@@ -70,25 +65,20 @@ dust. Full file below (copy it if you want your own copy):
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from engine.api import Scene, Text, FlowParticles
+from engine.api import Video
 
 
-class Lesson2(Scene):
-    def construct(self):
-        title = Text("DREAM", subtitle="EPISODE ONE",
-                     weight="Light", tracking=18)
-        dots = FlowParticles(n=1500, seed=7)
-        self.particles = dots
-        self.text_obj = title
-        self.play(dots.drift(duration=1.6))
-        self.play(dots.form(title, duration=2.6, sweep=0.9))
-        self.play(self.hold(duration=1.0))
+class Lesson2(Video):
+    def build(self):
+        self.drift(1.6)
+        self.show("DREAM", "EPISODE ONE", 2.6, tracking=18)
+        self.rest(1.0)
 
 
 if __name__ == "__main__":
     out = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                        "lesson2.preview.mp4"))
-    Lesson2(out=out, mode="preview", thumbnail=False).construct_and_render()
+    Lesson2(save=out, mode="preview").run()
 ```
 
 Next lesson.
@@ -100,10 +90,10 @@ Next lesson.
 Goal: add a moment. Open `lesson3.py`. New last line:
 
 ```python
-        self.play(dots.scatter(duration=1.4, power=340.0))
+        self.burst(1.4)
 ```
 
-`scatter` bursts words back into dust. Good for endings.
+`burst` blows words back into dust. Good for endings.
 
 ```sh
 ./oanim render course/lesson3.py --mode preview
@@ -113,22 +103,20 @@ Mid-burst looks like this:
 
 ![Lesson 3](learn_frames/l3_outro.png)
 
-Change `power=340.0` to `600.0`. Run. Wild burst. Change to `150.0`. Soft
-sigh. That number is the burst strength. Next lesson.
+Change it to `self.burst(1.4, strength=600.0)`. Run. Wild burst. Change to
+`strength=150.0`. Soft sigh. That number is the burst strength. Next lesson.
 
 ---
 
 ## Lesson 4 — warm mood (5 minutes)
 
-Goal: same words and dust, new feeling. Open `lesson4.py`. New pieces:
+Goal: same words, new feeling. Open `lesson4.py`. New first line:
 
 ```python
-from engine.api import Scene, Text, FlowParticles, Camera
-        self.attach_camera(Camera().push_in(1.0, 1.06).handheld(1.2))
+        self.mood("ember", trails=0.6, zoom=1.06, shake=1.2)
 ```
 
-And the last lines say `theme="ember", motion_blur=0.6` (warm colors +
-light trails).
+One line sets warm colors, light trails, slow push-in.
 
 ```sh
 ./oanim render course/lesson4.py --mode preview
@@ -136,22 +124,28 @@ light trails).
 
 ![Lesson 4](learn_frames/l4_mood.png)
 
-Warm orange. Streaky trails. Slow push-in. Delete the camera line and the
-shot goes still. Try `theme="moss"` (green) or `"bone"` (grey). Next lesson.
+Warm orange. Streaky trails. Slow push-in. Delete the mood line and the
+video goes back to moonlight blue, still camera. Try `self.mood("moss")`
+(green) or `self.mood("bone")` (grey). Next lesson.
 
 ---
 
 ## Lesson 5 — new look for free (5 minutes)
 
-Goal: same title, new dust. Open `lesson5.py`. Two numbers changed:
+Goal: same title, new dust. Open `lesson5.py`. Two changes:
 
 ```python
-        dots = FlowParticles(n=1500, seed=21)
-        self.play(dots.form(title, duration=2.6, sweep=0.4))
+class Lesson5(Video):
+    seed = 21
+
+    def build(self):
+        self.drift(1.6)
+        self.show("GROWTH", "ORGANIC MOTION", 2.6, wave=0.4)
+        self.rest(1.0)
 ```
 
-- `seed=21` (was 7): new random dust. Same words, new art.
-- `sweep=0.4` (was 0.9): faster letter wave. `0` = all at once.
+- `seed = 21` (was 7): new random dust. Same words, new art.
+- `wave=0.4` (was 0.9): faster letter wave. `0` = all at once.
 
 ```sh
 ./oanim render course/lesson5.py --mode preview
@@ -168,9 +162,7 @@ Put it next to the Lesson 1 picture. Same word, different dust. Next lesson.
 Goal: dust can grow shapes. Open `lesson6.py`:
 
 ```python
-from engine.api import Scene, FlowParticles, Bloom
-        bloom = Bloom(scale=0.46, jitter=0.8)
-        self.play(dots.form(bloom, duration=2.0, sweep=0.9))
+        self.grow(Bloom(scale=0.46, jitter=0.8), 2.0, wave=0.9)
 ```
 
 ```sh
@@ -180,7 +172,7 @@ from engine.api import Scene, FlowParticles, Bloom
 ![Lesson 6](learn_frames/l6_bloom.png)
 
 Change `Bloom(...)` to `Branch(depth=7, seed=11)` (fix the import too). A
-tree grows. Then `DLA(sticks=900, seed=13)`. Lightning. Next lesson.
+tree grows. Then `Lightning(pieces=900, seed=13)`. Lightning. Next lesson.
 
 ---
 
@@ -189,18 +181,17 @@ tree grows. Then `DLA(sticks=900, seed=13)`. Lightning. Next lesson.
 Goal: motion follows sound. Open `lesson7.py`:
 
 ```python
-from engine.audio import SineDrive
-        beat = SineDrive(bpm=132)
-        self.play(dots.drift(duration=1.0, drive=beat))
-        self.play(dots.form(title, duration=1.6, sweep=0.9, drive=beat))
+        self.pulse(132)
+        self.drift(1.0)
+        self.show("PULSE", "132 BPM", 1.6, tracking=18)
+        self.rest(0.5)
 ```
 
-`drive=beat` plugs a pulse into any moment. Louder beat = stronger flow +
+`pulse` sets a beat for the whole video. Louder beat = stronger flow +
 brighter dots. For your real sound file, use this instead:
 
 ```python
-from engine.audio import AudioDrive
-drv = AudioDrive("vo.wav")
+        self.music("vo.wav")
 ```
 
 ```sh
@@ -211,3 +202,19 @@ drv = AudioDrive("vo.wav")
 
 You know the whole tool now. Make your own: `02_TASKS.md` → "Start a new
 video from zero".
+
+---
+
+## When something looks wrong
+
+| You see | It means | Fix |
+|---|---|---|
+| `ModuleNotFoundError: engine` | File moved somewhere deep (scripts must live one folder below the project, like `my_videos/` or `course/`) | Put it back |
+| Empty video message | Your `build()` has no moments yet | Add a line like `self.drift(1.0)` |
+| Same dust every time | Same seed | Write `seed = 21` (or any number) in your class |
+| Music changes nothing | No beat set | Add `self.music("vo.wav")` or `self.pulse(132)` |
+| Can't hear audio in the mp4 | Normal — the tool makes silent film | Add music in your editor |
+| Title too wide / cut off | Long word on narrow screen | Shorter word, or lower `tracking` |
+
+Stuck after that? Open the closest `course/` lesson, read it, copy the
+idea into your file. Never edit `engine/` or `scenes/` — those are the tool.
