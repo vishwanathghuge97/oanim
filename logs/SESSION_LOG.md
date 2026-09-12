@@ -354,3 +354,14 @@
   mode re-renders from scratch. Candidate future win (not done): fuse
   colormap+composite into Rust (already the logged next target); x264
   preset tuning is pointless (1.6ms). More particles are nearly free.
+
+## 2026-09-12 — Docs wiped by user request
+
+* User rejected learning docs three times; asked to wipe them completely.
+  Deleted all 7 learning pages (`course/00_START,01_LEARN,02_TASKS,
+  03_REFERENCE,04_IDEAS`, `course/README`, `my_videos/README`) + stray
+  render/`__pycache__` leftovers. No stale references remain (grep-clean).
+  Kept: tool, runnable lesson/example `.py` films, `learn_frames/`,
+  videos, root README (repo front page), AGENTS.md, this log. All
+  recoverable from git. Lesson: for this user, docs only on explicit ask,
+  one page max, plain words.
