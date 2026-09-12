@@ -365,3 +365,14 @@
   videos, root README (repo front page), AGENTS.md, this log. All
   recoverable from git. Lesson: for this user, docs only on explicit ask,
   one page max, plain words.
+
+## 2026-09-12 — Best docs rebuilt (new API, Diátaxis, proven snippets)
+
+* User asked for the best documentation possible. Rebuilt the wiped set on
+  everything learned: numbered doors (00 first, one next step each),
+  Diátaxis split (START/LEARN/TASKS/REFERENCE/IDEAS), very simple English,
+  new one-way API throughout, no old names anywhere (grep-clean).
+* Proof kept: L2 full block verbatim in doc; 13/13 excerpt lines match
+  files exactly (one fix: flower line now carries `wave=0.8` like the
+  file); all 9 frames exist and current; compile-clean. Docs reference
+  only files that exist; no dangling links.
