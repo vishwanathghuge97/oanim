@@ -202,3 +202,21 @@
   create → 5 moments → knobs → modes → recipes → troubleshooting → what not
   to touch). Fixed loop recipe to match real API (`construct()` +
   `render_loop()`). Linked from `my_videos/README.md`.
+
+## 2026-09-12 — Real course docs: LEARN.md rebuilt as 7 runnable lessons
+
+* User verdict: old LEARN.md was an overview, not teaching. Rebuilt as a
+  course: L0 vocabulary → L1 first render → L2 your words → L3 timeline +
+  scatter → L4 mood (ember/blur/camera) → L5 seed/sweep → L6 Bloom growth →
+  L7 beat drive → graduation upload checklist. Every lesson: goal, exact
+  file, exact command, real rendered frame, things to notice, exercise,
+  checkpoint. Troubleshooting table kept + honest notes (tool never mixes
+  audio; scripts must live in `my_videos/` for the import path).
+* Proof, not claims: all 7 lesson files live in `my_videos/lessonN.py` and
+  each was rendered via the exact documented CLI flow (outputs beside
+  scripts, since removed). Frames in `my_videos/learn_frames/` (7 PNGs,
+  committed like demo2.png). Cross-checks: doc-file renders bit-identical
+  to independent runs (meandiff 0.000 ×3 pairs); full-file block (L2)
+  verbatim in doc; 11 excerpt lines substring-verified against lesson files.
+* L3/L4 frames visually confirmed (radial burst mid-scatter; ember trails +
+  crisp subtitle). Tmp lesson scaffolding removed.
