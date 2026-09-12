@@ -3,6 +3,8 @@
 Everything in here is yours. The engine (`engine/`), examples (`scenes/`),
 and build files are the tool — you never need to touch them.
 
+New here? Read `LEARN.md` first (15 minutes, plain language).
+
 ## Make a video (3 steps)
 
 ```sh

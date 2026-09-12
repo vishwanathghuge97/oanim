@@ -195,3 +195,10 @@
   (`my_videos/ep01.py` → `my_videos/ep01.preview.mp4`); explicit `--out`
   still wins. End-to-end proven (preview mp4+png healthy, frame 77 checked),
   test artifacts removed — `my_videos/` ships with README only.
+
+## 2026-09-12 — Learning doc for personal use
+
+* `my_videos/LEARN.md`: plain-language guide (big picture → 3 things you
+  create → 5 moments → knobs → modes → recipes → troubleshooting → what not
+  to touch). Fixed loop recipe to match real API (`construct()` +
+  `render_loop()`). Linked from `my_videos/README.md`.
