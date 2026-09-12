@@ -383,3 +383,11 @@
   header once; each lesson keeps only what's new, with varied voice
   (no more Goal/Run/Try repeated 7×; closings differ). Code lines and
   frames untouched; L2 block + 11 excerpts re-verified verbatim.
+
+## 2026-09-12 — Course deleted by user, refs cleaned
+
+* User deleted all of `course/` (docs + lessons + frames) + both READMEs.
+  Staged the deletions; fixed dangling refs in AGENTS.md + root README
+  layout list; health-checked tool (compile + template preview render OK).
+  Kept: engine, scenes, bench, rust-core, my_videos video, root README,
+  AGENTS.md, this log. All restorable from git.

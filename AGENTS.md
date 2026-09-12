@@ -12,13 +12,11 @@ Read `README.md` and `logs/SESSION_LOG.md` before changing anything.
 * **One API, plain words.** The user surface is `Video` verbs
   (`drift`/`show`/`grow`/`follow`/`rest`/`burst`/`mood`/`music`/`pulse`) +
   `Shape`s (`Bloom`/`Branch`/`Lightning`/custom). No aliases, no kept-old
-  names — migrate everything together (scenes + course + my_videos +
-  docs) and prove it with renders. Underscore names (`_Text`, `_Dust`,
+  names — migrate everything together (scenes + my_videos + docs) and prove
+  it with renders. Underscore names (`_Text`, `_Dust`,
   …) are engine insides, never docs.
   Personal videos live in `my_videos/` (scaffolded by `./oanim new`) — never
   edit or move them during engine work; verify with copies in `tmp/` instead.
-  Course files in `course/` (lessons + learning docs) are runnable teaching
-  material — keep every snippet working; update frames if engine output changes.
 * **Rust is an accelerator, never a requirement.** Every Rust kernel ships with a
   numpy fallback in `engine/_core.py`. If the `.so` is missing, everything runs.
   `OANIM_CORE=off` forces the fallback path for debugging.

@@ -37,7 +37,6 @@ class MyVideo(Video):
 * `rust-core/` — PyO3 extension `oanim_core` (`splat_add`, `splat_add_glow`, abi3)
 * `rust-core/rebuild.sh` — rebuild wheel + reinstall + bench (one command)
 * `scenes/` — `template.py` (starter), `demo2.py`, `showcase.py`, `hero.py`
-* `course/` — learning docs + runnable lessons (keep every snippet working)
 * `my_videos/` — personal videos (never touch during engine work)
 * `tmp/` — ALL temp output: renders, wheels, cargo/rustup/uv-python toolchains, caches
 * `logs/` — session log with decisions + numbers (read before changing things)
