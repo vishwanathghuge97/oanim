@@ -8,11 +8,15 @@ identical Python API with numpy fallback.
 ## Quickstart (this folder only — nothing system-wide)
 
 ```sh
-./.venv/bin/python scenes/demo2.py        # render 5s draft -> demo2.mp4
-./oanim render scenes/template.py --mode preview --out tmp/x.mp4
-./oanim render scenes/template.py --mode short --out tmp/short.mp4
-mpv demo2.mp4
+./oanim new ep01                              # scaffold my_videos/ep01.py
+./oanim render my_videos/ep01.py --mode preview   # fast check
+./oanim render my_videos/ep01.py --mode final     # 1080p upload
+mpv my_videos/ep01.final.mp4
 ```
+
+Your videos live in `my_videos/` (see its README). The tool
+(`engine/`, `scenes/` examples, `rust-core/`, `bench/`) stays untouched.
+Legacy demo: `./.venv/bin/python scenes/demo2.py` (renders `demo2.mp4`).
 
 User starter: copy `scenes/template.py`.
 

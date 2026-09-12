@@ -179,5 +179,19 @@
   File-based beat-sync path closed (only `SineDrive` was proven before).
 * Side effect noted: preview ink grain tightened slightly vs yesterday's
   A/B/C (sigma 9→6 eff; meandiff ~3.8, frame re-checked — looks as good or
-  better). Draft/final behavior unchanged at 540p scale. Showcase re-rendered
+  better). Draft/final behavior unchanged at 540p scale.   Showcase re-rendered
   (8/8), benches green (splat 45–48x exact; step ≤1.22e-04).
+
+## 2026-09-12 — Personal workspace: my_videos/ + `./oanim new`
+
+* Split tool vs. videos: `my_videos/` (user-owned, has its own README with
+  3-step workflow + rules of thumb) vs. `engine/`/`scenes/`/`rust-core/`/`bench/`
+  (tool, frozen). AGENTS.md + root README quickstart updated to match.
+* `./oanim new <name>` scaffolds `my_videos/<name>.py` from
+  `scenes/template.py` (sanitized name, CamelCase class, out default beside
+  the script, `--force` guard). Verified scaffold + double-run guard.
+* **Bug found by verification:** CLI `--out` default resolved against CWD,
+  so renders landed in repo root. Fix: default is now beside the scene file
+  (`my_videos/ep01.py` → `my_videos/ep01.preview.mp4`); explicit `--out`
+  still wins. End-to-end proven (preview mp4+png healthy, frame 77 checked),
+  test artifacts removed — `my_videos/` ships with README only.

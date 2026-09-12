@@ -1,12 +1,15 @@
 #!/home/vishwanath/Desktop/exp/.venv/bin/python
 """oanim CLI — living titles for storytellers.
 Usage:
+  ./oanim new ep01                                # scaffold my_videos/ep01.py
   ./oanim render scenes/template.py --mode preview --encoder cpu
   ./oanim render scenes/template.py --mode draft --out demo_cli.mp4
   ./oanim render scenes/template.py --mode short --out short.mp4
 All temp/cache stays inside ./tmp (never system-wide).
+Your videos live in ./my_videos (never touch engine/ or scenes/).
 """
 import os
+import re
 import sys
 import runpy
 import argparse
@@ -34,15 +37,57 @@ def cmd_render(args):
         print("no Scene subclass found in", scene_path)
         return 2
     cls = found[0]
-    out = os.path.abspath(args.out or (os.path.splitext(os.path.basename(scene_path))[0] + f".{args.mode}.mp4"))
+    if args.out:
+        out = os.path.abspath(args.out)
+    else:
+        # default: next to the scene file (my_videos/ep01.py -> my_videos/ep01.preview.mp4)
+        base = os.path.splitext(os.path.basename(scene_path))[0]
+        out = os.path.join(os.path.dirname(scene_path), f"{base}.{args.mode}.mp4")
     print(f"oanim: {cls.__name__} -> {out} [{args.mode}/{args.encoder}]")
     cls(out=out, mode=args.mode, encoder=args.encoder).construct_and_render()
+    return 0
+
+
+def cmd_new(args):
+    """Scaffold a new personal video in my_videos/ from scenes/template.py."""
+    fname = re.sub(r"[^A-Za-z0-9_]+", "_", args.name).strip("_") or "my_video"
+    if fname[0].isdigit():
+        fname = "v_" + fname
+    dest_dir = os.path.join(ROOT, "my_videos")
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, fname + ".py")
+    if os.path.exists(dest) and not args.force:
+        print("exists (use --force to overwrite):", dest)
+        return 1
+    with open(os.path.join(ROOT, "scenes", "template.py")) as f:
+        src = f.read()
+    cls = "".join(w.capitalize() for w in fname.split("_")) or "MyVideo"
+    src = src.replace('"""oanim starter — copy this file for every new video."""',
+                      f'"""{fname} — my video. Edit TITLE/SUBTITLE/theme, then:\n'
+                      f'  ./oanim render my_videos/{fname}.py --mode preview\n'
+                      f'  ./oanim render my_videos/{fname}.py --mode final    # 1080p upload\n'
+                      f'"""')
+    src = src.replace("class MyVideo(Scene):", f"class {cls}(Scene):")
+    src = src.replace("MyVideo(out=out, mode=a.mode, encoder=a.encoder)",
+                      f"{cls}(out=out, mode=a.mode, encoder=a.encoder)")
+    src = src.replace('ap.add_argument("--out", default="my_video.mp4")',
+                      f'ap.add_argument("--out", default="{fname}.mp4")')
+    src = src.replace('os.path.join(os.path.dirname(__file__), "..", a.out)',
+                      'os.path.join(os.path.dirname(__file__), a.out)')
+    with open(dest, "w") as f:
+        f.write(src)
+    print("NEW", dest)
+    print(f"next: ./oanim render my_videos/{fname}.py --mode preview")
     return 0
 
 
 def main():
     ap = argparse.ArgumentParser(prog="oanim")
     sub = ap.add_subparsers(dest="cmd", required=True)
+    n = sub.add_parser("new", help="scaffold my_videos/<name>.py")
+    n.add_argument("name", help="video name (e.g. ep01)")
+    n.add_argument("--force", action="store_true",
+                   help="overwrite if it exists")
     r = sub.add_parser("render", help="render a scene file")
     r.add_argument("scene", help="path to scenes/*.py")
     r.add_argument("--mode", default="draft", choices=["preview", "draft", "final", "short"])
@@ -51,6 +96,8 @@ def main():
     a = ap.parse_args()
     if a.cmd == "render":
         return cmd_render(a)
+    if a.cmd == "new":
+        return cmd_new(a)
     return 0
 
 

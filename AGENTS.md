@@ -11,6 +11,8 @@ Read `README.md` and `logs/SESSION_LOG.md` before changing anything.
   toolchains, vendor dirs. `tmp/` is git-ignored.
 * **User API is frozen unless the user asks.** `scenes/*.py` express intent
   (`drift`/`form`/`hold`); keep them short. Engine changes must not break them.
+  Personal videos live in `my_videos/` (scaffolded by `./oanim new`) — never
+  edit or move them during engine work; verify with copies in `tmp/` instead.
 * **Rust is an accelerator, never a requirement.** Every Rust kernel ships with a
   numpy fallback in `engine/_core.py`. If the `.so` is missing, everything runs.
   `OANIM_CORE=off` forces the fallback path for debugging.
