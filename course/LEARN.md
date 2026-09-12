@@ -32,10 +32,10 @@ Words + dust + time plan. That is all there is. Go to Lesson 1.
 Goal: see the tool work.
 
 ```sh
-./oanim render my_videos/lesson1.py --mode preview
+./oanim render course/lesson1.py --mode preview
 ```
 
-Open `my_videos/lesson1.preview.mp4`. The end looks like this:
+Open `course/lesson1.preview.mp4`. The end looks like this:
 
 ![Lesson 1](learn_frames/l1_first.png)
 
@@ -57,7 +57,7 @@ Goal: your words on screen. Open `lesson2.py`. Only the words changed:
 ```
 
 ```sh
-./oanim render my_videos/lesson2.py --mode preview
+./oanim render course/lesson2.py --mode preview
 ```
 
 ![Lesson 2](learn_frames/l2_words.png)
@@ -106,7 +106,7 @@ Goal: add a moment. Open `lesson3.py`. New last line:
 `scatter` bursts words back into dust. Good for endings.
 
 ```sh
-./oanim render my_videos/lesson3.py --mode preview
+./oanim render course/lesson3.py --mode preview
 ```
 
 Mid-burst looks like this:
@@ -131,7 +131,7 @@ And the last lines say `theme="ember", motion_blur=0.6` (warm colors +
 light trails).
 
 ```sh
-./oanim render my_videos/lesson4.py --mode preview
+./oanim render course/lesson4.py --mode preview
 ```
 
 ![Lesson 4](learn_frames/l4_mood.png)
@@ -154,7 +154,7 @@ Goal: same title, new dust. Open `lesson5.py`. Two numbers changed:
 - `sweep=0.4` (was 0.9): faster letter wave. `0` = all at once.
 
 ```sh
-./oanim render my_videos/lesson5.py --mode preview
+./oanim render course/lesson5.py --mode preview
 ```
 
 ![Lesson 5](learn_frames/l5_seed.png)
@@ -174,7 +174,7 @@ from engine.api import Scene, FlowParticles, Bloom
 ```
 
 ```sh
-./oanim render my_videos/lesson6.py --mode preview
+./oanim render course/lesson6.py --mode preview
 ```
 
 ![Lesson 6](learn_frames/l6_bloom.png)
@@ -204,7 +204,7 @@ drv = AudioDrive("vo.wav")
 ```
 
 ```sh
-./oanim render my_videos/lesson7.py --mode preview
+./oanim render course/lesson7.py --mode preview
 ```
 
 ![Lesson 7](learn_frames/l7_pulse.png)

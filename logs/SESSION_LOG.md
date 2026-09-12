@@ -292,6 +292,22 @@
   TASKS chapter lines + L2 full block + 11 LEARN excerpts verified against
   files; all 9 doc frames exist; compile-clean.
 
+## 2026-09-12 — Workspace split: course/ vs my_videos/
+
+* User verdict: `my_videos/` was a scary 19-file dump (lessons + docs +
+  own video mixed). Fix: teaching material moved to `course/` (5 docs +
+  7 lessons + build_demo + task_chapter + learn_frames); `my_videos/`
+  keeps only README + user's `neuron_sun.*`. README rewritten as tiny
+  index pointing at `../course/START.md`; `course/README.md` added;
+  AGENTS.md notes course files are runnable teaching material.
+* Path fixes: doc commands now `course/lessonN.py`; FIX-IT row covers both
+  folders (scripts must live one level below root). `oanim new` unchanged.
+* Refresh forced by move check: re-render from `course/` differed from
+  committed frames (meandiff 2.4 — frames predated sigma auto-scale +
+  hold/scatter capture fix). Re-rendered all 9 frames from current engine,
+  l1 visually confirmed. Moved-file render verified via CLI (outputs land
+  in `course/`, compile-clean).
+
 ## 2026-09-12 — Perf Q&A: where render time really goes (measured)
 
 * User asked if the engine is slow. Profiled draft/n=1500 per-frame means:

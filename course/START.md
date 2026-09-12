@@ -15,12 +15,12 @@
 **Step 1.** Run this (from the project folder):
 
 ```sh
-./oanim render my_videos/lesson1.py --mode preview
+./oanim render course/lesson1.py --mode preview
 ```
 
-Wait a few seconds. You will see `WROTE my_videos/lesson1.preview.mp4`.
+Wait a few seconds. You will see `WROTE course/lesson1.preview.mp4`.
 
-**Step 2.** Open `my_videos/lesson1.preview.mp4` and watch it.
+**Step 2.** Open `course/lesson1.preview.mp4` and watch it.
 
 **Step 3.** Check: dust wanders, then becomes the word GROWTH.
 

@@ -79,7 +79,7 @@ s = MyScene(out="bed.mp4", mode="draft"); s.construct(); s.render_loop(blend=0.6
 
 | You see | Why | Do this |
 |---|---|---|
-| `ModuleNotFoundError: engine` | File moved out of `my_videos/` | Put it back (tool path is relative) |
+| `ModuleNotFoundError: engine` | File moved somewhere deep (scripts must live one folder below the project, like `my_videos/` or `course/`) | Put it back |
 | Black video | Forgot the two `self.` lines | Add `self.particles = dots`, `self.text_obj = title` |
 | Thin faint letters in final | Too few dots for 1080p | `n=4500` |
 | Same dust every time | Same seed | Change `seed=` |
