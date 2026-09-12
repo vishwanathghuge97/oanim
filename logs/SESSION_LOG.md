@@ -261,6 +261,19 @@
   read. Delivered `my_videos/neuron_sun.draft.mp4` (15.5M) + thumbnail,
   sun/neuron/sheet frames checked in draft.
 
+## 2026-09-12 — Junk removal (~1GB freed, verified harmless)
+
+* `tmp/`: deleted ~30 stale mp4s + ~50 frame PNGs + test wav + hero_list.txt
+  (all regenerable; showcase 2min, hero 38s) + emptied `pip-cache` (158M)
+  + removed `rust-target` (106M). Kept toolchains: rustup/cargo-reg/uv-python
+  /vendor/wheels/zig-cc.sh. tmp 1.8G → 762M.
+* `__pycache__` dirs removed; unused `import runpy` dropped from `oanim`.
+* Kept deliberately: root demo1/2/hero mp4s (user watches them),
+  `engine/mini.py` + `scenes/demo1.py` (linked working pair),
+  `smoothstep`/`_ss01` (both live), `pull_out` (public API, documented).
+* Verified after: full from-scratch `rebuild.sh` OK, splat bench 42–47x
+  exact, CLI `new`+`render` OK, preview render OK, compile-all clean.
+
 ## 2026-09-12 — Perf Q&A: where render time really goes (measured)
 
 * User asked if the engine is slow. Profiled draft/n=1500 per-frame means:

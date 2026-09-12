@@ -11,7 +11,6 @@ Your videos live in ./my_videos (never touch engine/ or scenes/).
 import os
 import re
 import sys
-import runpy
 import argparse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
