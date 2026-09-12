@@ -543,7 +543,9 @@ class Scene:
         self.reveal = reveal  # ink (baked by particles) | dots | solid (mask)
         self.ink_gain = float(ink_gain)
         self.ink_sharp = float(ink_sharp)  # smoothstep center for ink->solid
-        self.ink_sigma = float(ink_sigma)  # deposit radius: settled=ink, near=halo
+        self.ink_sigma = float(ink_sigma)  # deposit radius in draft-px (540p);
+        # auto-scaled by resolution so one default holds preview->final
+        self.ink_sigma_eff = float(ink_sigma) * (min(w, h) / 540.0)
         self.ink = np.zeros((h, w), np.float32)  # persistent, never fades
         self.phases = []
         self.canvas = np.zeros((h, w), np.float32)
@@ -637,7 +639,7 @@ class Scene:
             elif phase in ("form", "flock", "hold"):
                 # bake only while shaping: drift flybys must not pre-ghost letters
                 d2 = ((p.pos - p.targets) ** 2).sum(axis=1)
-                w = (np.exp(-d2 / (2 * self.ink_sigma ** 2)).astype(np.float32)
+                w = (np.exp(-d2 / (2 * self.ink_sigma_eff ** 2)).astype(np.float32)
                      * self.ink_gain)
                 splat_vals(self.ink, xi, yi, w)
                 # saturating cap: threshold stays valid across modes/densities

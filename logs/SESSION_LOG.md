@@ -159,3 +159,25 @@
   showcase clips healthy (last-mean 12–18, max 255); hero re-rendered under
   final defaults — 25.3s, 26.7M, 38s wall. `demo2.png` + `hero.png`
   regenerated, both visually checked (textured, readable).
+
+## 2026-09-12 — Gap close-out: final 1080p + vertical short + real audio
+
+* **1080p needed a fix.** First `final` render (n=1500) came out starved —
+  same particles over 4x pixels, thin faint letters. Two-part fix
+  (`engine/api.py`): `ink_sigma` now draft-relative with auto-scale
+  (`ink_sigma_eff = ink_sigma * min(w,h)/540` → 6/9/18 across modes) +
+  particle rule `n=1500 preview/draft, n=4500 final` (README recipe).
+  Probe: end solid-fill 0.59 preview / 0.61 final. Real final: 5.2s in
+  31s wall, 14.6M, frame-checked — full textured letters, subtitle legible.
+* **Vertical short: works, no fix.** `short_check.mp4` thumbnail looked like
+  clipped "H" at small scale; numeric check overruled: mask x-range 72–641,
+  ink 64–647, zero bright pixels past x=680 (40px margin). Shrink loop fits
+  size 106 at 720 wide. Lesson logged: measure, don't eyeball thumbnails.
+* **Real-file audio verified.** Synthesized `tmp/voice_test.wav` (speech-like
+  phrases+gaps) → `AudioDrive` envelope 1.00 on phrases, ~0.01 in gaps;
+  `show_voice.mp4` picture follows it (p99 119–165 phrase vs 77–83 gap).
+  File-based beat-sync path closed (only `SineDrive` was proven before).
+* Side effect noted: preview ink grain tightened slightly vs yesterday's
+  A/B/C (sigma 9→6 eff; meandiff ~3.8, frame re-checked — looks as good or
+  better). Draft/final behavior unchanged at 540p scale. Showcase re-rendered
+  (8/8), benches green (splat 45–48x exact; step ≤1.22e-04).

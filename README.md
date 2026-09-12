@@ -58,6 +58,10 @@ self = MyScene(out="intro.mp4", mode="draft", theme="ember", motion_blur=0.6)
 self.play(dots.drift(1.6)); self.play(dots.form(title, 2.6)); self.play(self.hold(1.0))
 ```
 Section card: `Text("CHAPTER 2", weight="Thin", tracking=20)` + `form(..., sweep=1.2)`.
+Final 1080p uploads: scale particles with pixels — `FlowParticles(n=4500)`
+(ink deposit radius auto-scales, so defaults hold across modes).
+Vertical Short: `--mode short` just works; title auto-shrinks to fit 720 wide.
+Real voiceover drive: `drv = AudioDrive("vo.wav")`, pass `drive=drv`.
 Subscribe outro: `form()` then `scatter(1.4, power=340)` back into flow.
 Flock title: `dots.flock(title, 3.0)` instead of `form()` — streaming boids.
 Growth interstitials: `form(Bloom())`, `form(Branch(depth=7))`, `form(DLA(sticks=900))`.
