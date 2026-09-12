@@ -1,6 +1,4 @@
-# oanim session log — chronological context for AI agents (and the human)
-
-## 2026-09-12 — Project birth + first demos (CPU-only engine)
+# oanim session log — chronological context for AI agents (and the human)## 2026-09-12 — Project birth + first demos (CPU-only engine)
 
 * Goal set: programmatic animation tool for YouTube that feels natural but uncommon
   (not generic fade/slide). Niche locked: **organic-cinematic living titles**, not math
@@ -41,3 +39,26 @@
 * Vendored crates → `tmp/vendor`, offline `cargo build --release` verified.
   Rebuild: `sh rust-core/rebuild.sh`. Full render ~3.3s (splat was ~5% of frame
   time; Pillow+x264 dominate — real payoff comes with fused step/flock).
+
+## 2026-09-12 — Repo hygiene + fused step kernel (slice 2)
+
+* GitHub connected (`vishwanathghuge97/oanim`, branch `main`). Ignored: `.venv/`,
+  `tmp/`, `*.mp4`, `*.so`. `demo2.png` thumbnail committed as visual proof;
+  mp4s go to Releases, not git. Added `README.md`, `AGENTS.md`, this log.
+  Bench moved `tmp/bench_splat.py` → `bench/` (tracked); `rebuild.sh` updated.
+* Fused `step_form` kernel: analytic flow trig + staggered spring + cap + integrate
+  in one rayon-parallel pass (`pos/vel` inout, returns `mean_act, mean_dist`).
+  `form()` in `api.py` now delegates to `engine/_core.py::step_form`.
+* Contiguity gotcha: `pos`/`vel`/`targets` were `.T` views (non-contiguous) —
+  Rust `as_slice_mut` needs C-contiguous. Fixed at creation (`ascontiguousarray`,
+  values unchanged). `nx` cast to float32.
+* Bench (`bench/bench_step.py`, full 78-step form run): **1.6-1.8x @n1500,
+  ~1x @n4000+** — trig+bandwidth bound; numpy's vectorized libm already near-optimal.
+  Even f32 trig didn't move it (overhead dominates at these N). Parity: max pos diff
+  1.2e-04 @1500, exact @4000/10000 (≤1e-3 policy ✓).
+* Full-scene parity: raw frames 0–120 bit-identical; final frame maxdiff 58 =
+  sub-perceptual sparkle grain (verified visually, letters identical).
+* Honest perf picture: sim is ~1% of frame time; total render still ~3.3s
+  (Pillow colormap/composite + x264 dominate). Next high-value Rust targets:
+  colormap+composite fusion, or `flock()` O(n²) neighbor search. Do NOT chase
+  trig micro-opts further.

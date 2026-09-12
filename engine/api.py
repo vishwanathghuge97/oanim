@@ -4,7 +4,7 @@ import subprocess
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from engine._core import splat, HAS_RUST
+from engine._core import splat, step_form, HAS_RUST
 
 W, H, FPS = 960, 540, 30
 
@@ -102,7 +102,8 @@ class Text:
         ys, xs = np.nonzero(self.mask_np > 100)
         rng = np.random.default_rng(seed)
         idx = rng.integers(0, len(xs), size=n)
-        t = np.stack([xs[idx], ys[idx]]).astype(np.float32).T
+        t = np.ascontiguousarray(
+            np.stack([xs[idx], ys[idx]]).T, dtype=np.float32)
         t += rng.normal(0, 3.0, t.shape).astype(np.float32)
         self.targets = t
         return t
@@ -129,9 +130,11 @@ class FlowParticles:
         self.n = n
         self.seed = seed
         rng = np.random.default_rng(seed)
-        self.pos = np.stack([rng.uniform(0, W, n),
-                             rng.uniform(0, H, n)]).astype(np.float32).T
-        self.vel = np.zeros_like(self.pos)
+        # C-contiguous float32: required by the Rust kernels (no .T views).
+        self.pos = np.ascontiguousarray(
+            np.stack([rng.uniform(0, W, n),
+                      rng.uniform(0, H, n)]).T, dtype=np.float32)
+        self.vel = np.zeros((n, 2), dtype=np.float32)
         self.targets = None
         self.t0 = None       # per-particle activation time (set in form())
         self.text = None
@@ -156,8 +159,8 @@ class FlowParticles:
         self.targets = text.sample_targets(self.n, seed=self.seed)
         # sweep left->right + random: letters crystallize in order, not all at once
         xs = self.targets[:, 0]
-        nx = (xs - xs.min()) / max(1.0, xs.max() - xs.min())
-        self._nx = nx
+        nx = ((xs - xs.min()) / max(1.0, xs.max() - xs.min())).astype(np.float32)
+        self._nx = np.ascontiguousarray(nx)
         self._sweep = sweep
         self._form_dur = duration
 
@@ -165,22 +168,11 @@ class FlowParticles:
             if _t0[0] is None:
                 _t0[0] = t  # phase start time
             ts = t - _t0[0]
-            t0 = ts * 0 + (self._nx * self._sweep + self._rand)  # relative offsets
-            # act per particle: smooth 0->1 over 0.7s after its own start
-            act = smoothstep(t0, t0 + 0.7, np.full(self.n, ts, np.float32))
-            flow_w = float(1.0 - smoothstep(0.0, self._form_dur * 0.6, ts) * 0.95)
-            v_flow = flow_field(self.pos, t) * flow_w
-            to_t = self.targets - self.pos
-            k, c = 46.0, 7.2  # tighter pull, still slight overshoot
-            self.vel += (v_flow * 0.35 + to_t * (k * act[:, None])
-                         - self.vel * (c * act[:, None])) * dt
-            self.vel *= 0.985
-            sp = np.linalg.norm(self.vel, axis=1, keepdims=True)
-            cap = 460 - 260 * float(np.mean(act))  # slow down as we settle
-            self.vel *= np.minimum(1.0, cap / np.maximum(sp, 1e-6))
-            self.pos += self.vel * dt
+            # Fused kernel (Rust, numpy fallback): flow + spring + integrate.
+            mean_act, dist = step_form(
+                self.pos, self.vel, self.targets, self._nx, self._rand,
+                ts, t, dt, self._sweep, self._form_dur)
             # convergence-driven text reveal: ghost only when dust arrives
-            dist = np.linalg.norm(to_t, axis=1).mean()
             # 0 far -> 1 close, smooth
             closeness = float(np.clip((130.0 - dist) / 85.0, 0.0, 1.0))
             closeness = closeness * closeness * (3 - 2 * closeness)
@@ -188,9 +180,10 @@ class FlowParticles:
             prog = float(p * p * (3 - 2 * p)) if p < 1 else 1.0
             # require BOTH progress and actual arrival
             alpha = min(prog, closeness) * 0.95
-            state["flow_w"] = flow_w
+            state["flow_w"] = float(
+                1.0 - smoothstep(0.0, self._form_dur * 0.6, ts) * 0.95)
             state["text_alpha"] = alpha
-            state["mean_act"] = float(np.mean(act))
+            state["mean_act"] = float(mean_act)
         return _Phase("form", duration, fn)
 
     def settle_jitter(self, t):
