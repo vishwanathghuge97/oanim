@@ -1,0 +1,13 @@
+# Project-local cargo config: everything stays inside exp/tmp.
+# Linker = zig bundled in .venv (no system gcc needed).
+[target.x86_64-unknown-linux-gnu]
+linker = "/home/vishwanath/Desktop/exp/tmp/zig-cc.sh"
+
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "/home/vishwanath/Desktop/exp/tmp/vendor"
+
+[build]
+target-dir = "/home/vishwanath/Desktop/exp/tmp/rust-target"

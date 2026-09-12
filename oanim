@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""oanim CLI — living titles for storytellers.
+Usage:
+  ./oanim render scenes/template.py --mode preview --encoder cpu
+  ./oanim render scenes/template.py --mode draft --out demo_cli.mp4
+  ./oanim render scenes/template.py --mode short --out short.mp4
+All temp/cache stays inside ./tmp (never system-wide).
+"""
+import os
+import sys
+import runpy
+import argparse
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+os.environ.setdefault("PIP_CACHE_DIR", os.path.join(ROOT, "tmp", "pip-cache"))
+os.environ.setdefault("TMPDIR", os.path.join(ROOT, "tmp"))
+sys.path.insert(0, ROOT)
+
+
+def cmd_render(args):
+    scene_path = os.path.abspath(args.scene)
+    if not os.path.exists(scene_path):
+        print("missing scene:", scene_path)
+        return 2
+    # import scene module to find Scene subclass
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("user_scene", scene_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    from engine.api import Scene
+    found = [v for v in vars(mod).values()
+             if isinstance(v, type) and issubclass(v, Scene) and v is not Scene]
+    if not found:
+        print("no Scene subclass found in", scene_path)
+        return 2
+    cls = found[0]
+    out = os.path.abspath(args.out or (os.path.splitext(os.path.basename(scene_path))[0] + f".{args.mode}.mp4"))
+    print(f"oanim: {cls.__name__} -> {out} [{args.mode}/{args.encoder}]")
+    cls(out=out, mode=args.mode, encoder=args.encoder).construct_and_render()
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="oanim")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("render", help="render a scene file")
+    r.add_argument("scene", help="path to scenes/*.py")
+    r.add_argument("--mode", default="draft", choices=["preview", "draft", "final", "short"])
+    r.add_argument("--encoder", default="cpu", choices=["cpu", "vaapi"])
+    r.add_argument("--out", default=None)
+    a = ap.parse_args()
+    if a.cmd == "render":
+        return cmd_render(a)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

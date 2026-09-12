@@ -1,0 +1,17 @@
+# Python / runtime
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# All temporary + generated artifacts live here (never commit)
+tmp/
+
+# Rendered videos (large binaries) — keep demo2.png thumbnail instead.
+# Attach mp4s to GitHub Releases when sharing progress.
+*.mp4
+
+# Rust build outputs (rebuild via rust-core/rebuild.sh)
+*.so
+*.pyd
+target/
