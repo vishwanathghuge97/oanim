@@ -274,6 +274,24 @@
 * Verified after: full from-scratch `rebuild.sh` OK, splat bench 42–47x
   exact, CLI `new`+`render` OK, preview render OK, compile-all clean.
 
+## 2026-09-12 — Docs v3: Diátaxis revamp in very simple English
+
+* User verdict: still not good + direction: study real doc practice first.
+  Researched Diátaxis (tutorials/how-to/reference/explanation split —
+  Cloudflare/Gatsby use it) + Stripe lessons (quickstart first, runnable
+  samples, error-handling section, findable single pages). Diagnosis: our
+  files mixed teaching + tasks + facts in each file — that blur was the
+  confusion.
+* New shape in `my_videos/`: `START.md` (3 doors + 5-min first video on the
+  page), `LEARN.md` (pure tutorial path, explanations moved out),
+  `TASKS.md` (goal-first jobs + FIX-IT table + 3 learning rules),
+  `REFERENCE.md` (dry facts only), `IDEAS.md` (short why, plain words).
+  `BUILD.md`/`CHEATSHEET.md` deleted (split into TASKS/REFERENCE).
+  Sentence rule: short, present tense, define each new word on first use.
+* Proof kept: new `task_chapter.py` rendered (chapter frame committed);
+  TASKS chapter lines + L2 full block + 11 LEARN excerpts verified against
+  files; all 9 doc frames exist; compile-clean.
+
 ## 2026-09-12 — Perf Q&A: where render time really goes (measured)
 
 * User asked if the engine is slow. Profiled draft/n=1500 per-frame means:
