@@ -452,14 +452,19 @@ class FlowParticles:
         """Reverse of form: letters burst back into flow. Needs form() first
         (uses its targets); otherwise bursts from screen center."""
         cx, cy = W / 2, H / 2
+        # Capture creation-time copies (same retarget hazard form()/flock()
+        # had): a later form() must not change what this burst dissolves.
+        _has_t = self.targets is not None
+        _nx = (np.ascontiguousarray(self._nx.copy()) if (_has_t and self._nx is not None)
+               else None)
 
         def fn(state, t, dt, _t0=[None]):
             if _t0[0] is None:
                 _t0[0] = t
             ts = t - _t0[0]
             e = float(drive.energy(t)) if drive is not None else 0.0
-            if self.targets is not None:
-                nx = self._nx if self._nx is not None else np.zeros(self.n, np.float32)
+            if _nx is not None:
+                nx = _nx
             else:
                 nx = np.zeros(self.n, np.float32)
             rel = 1.0 - smoothstep(nx * sweep + self._rand * 0.5,
@@ -564,13 +569,19 @@ class Scene:
         return phase
 
     def hold(self, duration=1.0):
+        p = self.particles
+        # Capture creation-time targets (same retarget hazard as form():
+        # a later form() must not redirect this hold mid-render).
+        _targ = (np.ascontiguousarray(p.targets.copy())
+                 if (p is not None and p.targets is not None) else None)
+
         def fn(state, t, dt):
             # almost still: strong damping + breathing
-            if self.particles is not None and self.particles.targets is not None:
-                to_t = self.particles.targets - self.particles.pos
-                self.particles.vel += (to_t * 18.0 - self.particles.vel * 7.5) * dt
-                self.particles.pos += self.particles.vel * dt
-                self.particles.pos[:, 0] += self.particles.settle_jitter(t) * dt * 8
+            if p is not None and _targ is not None:
+                to_t = _targ - p.pos
+                p.vel += (to_t * 18.0 - p.vel * 7.5) * dt
+                p.pos += p.vel * dt
+                p.pos[:, 0] += p.settle_jitter(t) * dt * 8
             state["text_alpha"] = min(0.95, state.get("text_alpha", 0.9) + dt * 0.15)
         return _Phase("hold", duration, fn)
 

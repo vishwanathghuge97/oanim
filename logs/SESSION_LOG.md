@@ -239,3 +239,24 @@
   Cheatsheet defaults cross-checked to engine signatures (Text tracking=14,
   flock radius/sep/ali, MODES sizes, Scene kwargs); all lesson/demo files
   compile-clean.
+
+## 2026-09-12 — Personal video: NEURON SUN + engine retarget fix
+
+* `my_videos/neuron_sun.py` (18.1s): drift 5s void → flock into custom
+  `Neuron` target (soma ball + 11 dendrite arms, center-out order) → hold →
+  `form(PlaneSheet)` flat band → hold → `scatter` → `form(SunSystem)` (dense
+  sun + 3 ring-dust + planet blobs, inside-out order) → hold. Custom
+  `Targets` use `engine.api` W/H at call time (import-by-value goes stale).
+* **Engine bug (same retarget family as form/flock): `hold()` and
+  `scatter()` read `self.particles.targets/_nx` LIVE at render time, but
+  construct() runs all lines upfront — so every hold/scatter silently used
+  the LAST form's targets. Symptom in footage: sun disc+rings ghosted over
+  the neuron hold and sheet hold (looked like unconverged particles; probe
+  proved positions were perfect, mp4 disagreed → hold spring pulled toward
+  sun targets). Fix: both capture creation-time copies. Parity re-verified
+  (demo2 frames 0–120 identical, ≤24 late grain); showcase 8/8 + hero
+  re-rendered healthy (hero.mp4 size shifted slightly = multi-form acts now
+  correct; `hero.png` regenerated).
+* Neuron tuning: soma n//4 blew out white → n//6 + wider (R*0.06); arms now
+  read. Delivered `my_videos/neuron_sun.draft.mp4` (15.5M) + thumbnail,
+  sun/neuron/sheet frames checked in draft.
