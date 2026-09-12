@@ -376,3 +376,10 @@
   files exactly (one fix: flower line now carries `wave=0.8` like the
   file); all 9 frames exist and current; compile-clean. Docs reference
   only files that exist; no dangling links.
+
+## 2026-09-12 — LEARN de-templated (same-skeleton complaint)
+
+* User: all lessons read copy-pasted. Fix: shared "how lessons work"
+  header once; each lesson keeps only what's new, with varied voice
+  (no more Goal/Run/Try repeated 7×; closings differ). Code lines and
+  frames untouched; L2 block + 11 excerpts re-verified verbatim.

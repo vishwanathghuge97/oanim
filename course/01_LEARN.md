@@ -1,8 +1,8 @@
 # LEARN — 7 small lessons (~40 minutes)
 
-Do them in order. Each one: run a file, look, change one thing.
-Files `lesson1.py` … `lesson7.py` are in this folder. They all run.
-Every picture is a real frame from running them.
+Do them in order. Files `lesson1.py` … `lesson7.py` are in this folder.
+Every lesson works the same way: run the command, open the mp4 it makes,
+compare with the picture here. Then change one thing and run again.
 
 ---
 
@@ -16,36 +16,34 @@ Open `lesson1.py`. The whole video is this:
         self.rest(1.0)
 ```
 
-- `show(...)` = your words. The line holds the title, the small line, the seconds.
-- `drift` / `rest` = the time plan. Wander 1.6s, words 2.6s, rest 1.0s.
-
-Words + moments. That is all there is. Go to Lesson 1.
+The middle line is your words — title, small line, seconds. The other two
+are the time plan: wander, then words, then rest. Words + moments, done.
 
 ---
 
-## Lesson 1 — run it (5 minutes)
-
-Goal: see the tool work.
+## Lesson 1 — run it
 
 ```sh
 ./oanim render course/lesson1.py --mode preview
 ```
 
-Open `course/lesson1.preview.mp4`. The end looks like this:
+Open `course/lesson1.preview.mp4`:
 
 ![Lesson 1](learn_frames/l1_first.png)
 
-Look for: grainy dust letters. Small subtitle line. A few dots still
-floating. Alive, not frozen.
+Grainy dust letters, a small subtitle line, a few dots still floating.
+Alive, not frozen — that feeling is the whole tool.
 
-Run once more with `--mode draft` (same video, sharper). Rule from now on:
-preview while you work, draft to judge, final once. Next lesson.
+Same command with `--mode draft` gives the sharper version. From now on:
+preview while you work, draft to judge, final once.
+
+→ Lesson 2 puts your own words in.
 
 ---
 
-## Lesson 2 — your words (5 minutes)
+## Lesson 2 — your words
 
-Goal: your words on screen. Open `lesson2.py`. One line holds everything:
+Only one line differs from Lesson 1:
 
 ```python
         self.show("DREAM", "EPISODE ONE", 2.6, tracking=18)
@@ -57,8 +55,8 @@ Goal: your words on screen. Open `lesson2.py`. One line holds everything:
 
 ![Lesson 2](learn_frames/l2_words.png)
 
-Change `"DREAM"` to one of your words. Run again. Your word gathers from
-dust. Full file below (copy it if you want your own copy):
+Now put one of your words where `"DREAM"` is, and run again. Watching your
+own word gather from dust never gets old. The full file, for copying:
 
 ```python
 """Lesson 2: your own words."""
@@ -81,42 +79,41 @@ if __name__ == "__main__":
     Lesson2(save=out, mode="preview").run()
 ```
 
-Next lesson.
+→ Lesson 3 blows the words up at the end.
 
 ---
 
-## Lesson 3 — words burst at the end (5 minutes)
+## Lesson 3 — words burst at the end
 
-Goal: add a moment. Open `lesson3.py`. New last line:
+`lesson3.py` ends with a new moment:
 
 ```python
         self.burst(1.4)
 ```
 
-`burst` blows words back into dust. Good for endings.
-
 ```sh
 ./oanim render course/lesson3.py --mode preview
 ```
 
-Mid-burst looks like this:
-
 ![Lesson 3](learn_frames/l3_outro.png)
 
-Change it to `self.burst(1.4, strength=600.0)`. Run. Wild burst. Change to
-`strength=150.0`. Soft sigh. That number is the burst strength. Next lesson.
+That frame is mid-explosion — letters flying outward, dissolving. Try
+`strength=600.0` inside the brackets for violence, `strength=150.0` for a
+sigh. One number, two opposite feelings.
+
+→ Lesson 4 changes the mood entirely.
 
 ---
 
-## Lesson 4 — warm mood (5 minutes)
+## Lesson 4 — warm mood
 
-Goal: same words, new feeling. Open `lesson4.py`. New first line:
+First line of `lesson4.py` does all the work:
 
 ```python
         self.mood("ember", trails=0.6, zoom=1.06, shake=1.2)
 ```
 
-One line sets warm colors, light trails, slow push-in.
+Warm colors, light trails behind fast dots, a slow push-in:
 
 ```sh
 ./oanim render course/lesson4.py --mode preview
@@ -124,15 +121,17 @@ One line sets warm colors, light trails, slow push-in.
 
 ![Lesson 4](learn_frames/l4_mood.png)
 
-Warm orange. Streaky trails. Slow push-in. Delete the mood line and the
-video goes back to moonlight blue, still camera. Try `self.mood("moss")`
-(green) or `self.mood("bone")` (grey). Next lesson.
+Delete that one line and you're back to moonlight blue with a still shot.
+Same words, same dust — only the feeling changed. `"moss"` goes green,
+`"bone"` goes grey.
+
+→ Lesson 5 gets a new look without touching words or mood.
 
 ---
 
-## Lesson 5 — new look for free (5 minutes)
+## Lesson 5 — new look for free
 
-Goal: same title, new dust. Open `lesson5.py`. Two changes:
+Two small edits in `lesson5.py`:
 
 ```python
 class Lesson5(Video):
@@ -143,8 +142,8 @@ class Lesson5(Video):
         self.show("GROWTH", "ORGANIC MOTION", 2.6, wave=0.4)
 ```
 
-- `seed = 21` (was 7): new random dust. Same words, new art.
-- `wave=0.4` (was 0.9): faster letter wave. `0` = all at once.
+New seed, new dust — same words, new artwork. Faster wave (`0.4` instead
+of `0.9`; `0` means all letters at once):
 
 ```sh
 ./oanim render course/lesson5.py --mode preview
@@ -152,13 +151,16 @@ class Lesson5(Video):
 
 ![Lesson 5](learn_frames/l5_seed.png)
 
-Put it next to the Lesson 1 picture. Same word, different dust. Next lesson.
+Hold it next to the Lesson 1 picture. Out of ideas on any video? Change
+the seed. Free variations, forever.
+
+→ Lesson 6 drops words completely.
 
 ---
 
-## Lesson 6 — a flower, no words (5 minutes)
+## Lesson 6 — a flower, no words
 
-Goal: dust can grow shapes. Open `lesson6.py`:
+Dust doesn't need words. From `lesson6.py`:
 
 ```python
         self.grow(Bloom(scale=0.46, jitter=0.8), 2.0, wave=0.9)
@@ -170,14 +172,16 @@ Goal: dust can grow shapes. Open `lesson6.py`:
 
 ![Lesson 6](learn_frames/l6_bloom.png)
 
-Change `Bloom(...)` to `Branch(depth=7, seed=11)` (fix the import too). A
-tree grows. Then `Lightning(pieces=900, seed=13)`. Lightning. Next lesson.
+Swap in `Branch(depth=7, seed=11)` (and fix the import) and a tree grows.
+`Lightning(pieces=900, seed=13)` gives you lightning. One line per wonder.
+
+→ Last one: Lesson 7 adds sound.
 
 ---
 
-## Lesson 7 — dance to a beat (5 minutes)
+## Lesson 7 — dance to a beat
 
-Goal: motion follows sound. Open `lesson7.py`:
+`lesson7.py` sets a beat for the whole video, then plays as usual:
 
 ```python
         self.pulse(132)
@@ -186,8 +190,8 @@ Goal: motion follows sound. Open `lesson7.py`:
         self.rest(0.5)
 ```
 
-`pulse` sets a beat for the whole video. Louder beat = stronger flow +
-brighter dots. For your real sound file, use this instead:
+Louder beat, stronger flow, brighter dots. Got a real sound file? This one
+line replaces the pulse:
 
 ```python
         self.music("vo.wav")
@@ -199,8 +203,8 @@ brighter dots. For your real sound file, use this instead:
 
 ![Lesson 7](learn_frames/l7_pulse.png)
 
-You know the whole tool now. Make your own: `02_TASKS.md` → "Start a new
-video from zero".
+That's the whole tool in your hands. `02_TASKS.md` → "Start a new video
+from zero" makes it yours.
 
 ---
 
