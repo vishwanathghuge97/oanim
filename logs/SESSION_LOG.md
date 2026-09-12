@@ -260,3 +260,18 @@
 * Neuron tuning: soma n//4 blew out white → n//6 + wider (R*0.06); arms now
   read. Delivered `my_videos/neuron_sun.draft.mp4` (15.5M) + thumbnail,
   sun/neuron/sheet frames checked in draft.
+
+## 2026-09-12 — Perf Q&A: where render time really goes (measured)
+
+* User asked if the engine is slow. Profiled draft/n=1500 per-frame means:
+  sim 0.07–0.81ms (drift/form/hold/scatter/flock) vs `_draw` 23–57ms.
+  Ink composite adds ~34ms over dots baseline (~25ms); solid +14ms;
+  n=100→4500 changes draw by only ~1ms (per-PIXEL bound, not per-particle);
+  camera ~1–2ms; x264 append ~1.6ms. Conclusion: sim ≈1%, pixel
+  compositing ≈96% — the Rust particle engine is fast, Pillow/numpy
+  full-frame ops (esp. triple `_blur3` + composite + sparkle) set the pace.
+* Headline: `neuron_sun` 18.1s draft in 23.5s wall (0.77x realtime).
+  Feels slow because progress prints every 30 frames with no ETA and every
+  mode re-renders from scratch. Candidate future win (not done): fuse
+  colormap+composite into Rust (already the logged next target); x264
+  preset tuning is pointless (1.6ms). More particles are nearly free.
