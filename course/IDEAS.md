@@ -7,7 +7,9 @@ Read when curious. Not needed to make videos.
 dots arrive — never pasted on top. That is why it looks alive.
 
 **Seed = which random pattern.** Same seed → same film, every time. New
-seed → same words, new dust art. There is no best seed. Try numbers.
+seed → same words, new dust art. There is no best seed. Try numbers. (Your
+grain may differ a little from the pictures here — same words, same motion,
+only the tiny dots land in new spots.)
 
 **Sweep = the letter wave.** Each dot waits its turn by letter position,
 then flies. `0` = no wait (all together). `1.2` = long wait (slow wave).

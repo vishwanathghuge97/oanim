@@ -307,6 +307,12 @@
   hold/scatter capture fix). Re-rendered all 9 frames from current engine,
   l1 visually confirmed. Moved-file render verified via CLI (outputs land
   in `course/`, compile-clean).
+* Follow-up hunt (l4 old-vs-new diff 10.6 looked suspicious): renders are
+  bit-identical run-to-run on one binary, but numpy-fallback matches NEW
+  (0.42) not OLD (10.58) — old frame was pre-rebuild rayon-scheduling luck,
+  new is correct behavior. Same known 1e-4→ink-amplified grain family as
+  the logged late-frame sparkle; parity promise holds per-binary. Added one
+  honest line to `course/IDEAS.md` (your grain may differ slightly).
 
 ## 2026-09-12 — Perf Q&A: where render time really goes (measured)
 
