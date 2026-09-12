@@ -366,6 +366,15 @@
   recoverable from git. Lesson: for this user, docs only on explicit ask,
   one page max, plain words.
 
+## 2026-09-12 — One file: FUNCTIONS.md
+
+* User asked for a single simple file: every function job + args, how to
+  render. Root `FUNCTIONS.md` (~70 lines): 4 render commands, smallest
+  working video, moments table, settings, shapes, sizes, if-wrong rows.
+* Proof: doc example rendered as-is first (78 frames, healthy); example
+  block letter-exact vs rendered file; all 9 verb signatures grep-matched
+  to `engine/api.py`. No frames, no lessons, no fluff.
+
 ## 2026-09-12 — Best docs rebuilt (new API, Diátaxis, proven snippets)
 
 * User asked for the best documentation possible. Rebuilt the wiped set on
