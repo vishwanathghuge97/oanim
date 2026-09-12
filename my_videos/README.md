@@ -1,6 +1,7 @@
 # my_videos — your videos live here. Only yours.
 
-New? Learn first: `../course/START.md` (first video in 5 minutes).
+**First time? Do NOT start here.** Open `../course/00_START.md` instead.
+It makes your first video in 5 minutes. Come back after.
 
 ```sh
 ./oanim new NAME                              # new video file, lands here

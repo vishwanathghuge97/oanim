@@ -1,6 +1,6 @@
 # REFERENCE — facts only, no lessons
 
-Look up values here. Learn in `LEARN.md`. Do jobs in `TASKS.md`.
+Look up values here. Learn in `01_LEARN.md`. Do jobs in `02_TASKS.md`.
 
 ## Things
 

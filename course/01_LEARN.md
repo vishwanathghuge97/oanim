@@ -209,5 +209,5 @@ drv = AudioDrive("vo.wav")
 
 ![Lesson 7](learn_frames/l7_pulse.png)
 
-You know the whole tool now. Make your own: `TASKS.md` → "Start a new
+You know the whole tool now. Make your own: `02_TASKS.md` → "Start a new
 video from zero".
