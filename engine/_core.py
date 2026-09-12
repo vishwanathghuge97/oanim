@@ -68,6 +68,22 @@ def step_form(pos, vel, targets, nx, rand, ts, t_glob, dt, sweep, form_dur,
     return float(np.mean(act)), float(np.linalg.norm(to_t, axis=1).mean())
 
 
+def splat_vals(canvas, xi, yi, vals):
+    """Scatter-add per-particle vals (used for ink deposits)."""
+    if HAS_RUST:
+        xs = np.ascontiguousarray(xi, dtype=np.int32)
+        ys = np.ascontiguousarray(yi, dtype=np.int32)
+        v = np.ascontiguousarray(vals, dtype=np.float32)
+        c = np.ascontiguousarray(canvas, dtype=np.float32)
+        if canvas is not c:
+            canvas[:] = c
+        _rc.splat_add(c, xs, ys, v)
+        if canvas is not c:
+            canvas[:] = c
+        return
+    np.add.at(canvas, (yi, xi), vals)
+
+
 def splat(canvas, xi, yi, b, glow=0.0):
     """Add brightness b at (xi, yi); glow g to right/down neighbours."""
     if HAS_RUST:

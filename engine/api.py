@@ -4,7 +4,7 @@ import subprocess
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from engine._core import splat, step_form, HAS_RUST
+from engine._core import splat, splat_vals, step_form, HAS_RUST
 
 W, H, FPS = 960, 540, 30
 
@@ -49,6 +49,19 @@ def _load_font(size, weight="Light"):
         except Exception:
             continue
     return ImageFont.load_default()
+
+
+def _blur3(img):
+    """One separable 3-tap blur pass ([1,2,1]/4 along each axis)."""
+    t = img.copy()
+    t[:, 1:-1] = (img[:, :-2] + 2 * img[:, 1:-1] + img[:, 2:]) * 0.25
+    t[1:-1, :] = (t[:-2, :] + 2 * t[1:-1, :] + t[2:, :]) * 0.25
+    return t
+
+
+def _ss01(a, b, x):
+    t = np.clip((x - a) / max(1e-6, b - a), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
 
 
 def _draw_tracked(d, center_x, y, text, font, fill, tracking=10):
@@ -222,6 +235,8 @@ class Text(Targets):
         self.mask = None      # L image
         self.mask_np = None
         self.targets = None   # filled on demand per particle count
+        self.sub_mask = None  # subtitle-only L image (crisp support line in ink mode)
+        self.sub_mask_np = None
 
     def render_mask(self, w=None, h=None):
         w = w or W
@@ -249,6 +264,14 @@ class Text(Targets):
                       sub, 150, tracking=10)
         self.mask = img
         self.mask_np = np.asarray(img)
+        # subtitle-only mask: thin support lines can't bake legibly from
+        # sparse particle ink, so ink mode composites this crisply instead.
+        sub_img = Image.new("L", (w, h), 0)
+        ds = ImageDraw.Draw(sub_img)
+        _draw_tracked(ds, w / 2, h / 2 + 90, self.subtitle,
+                      sub, 200, tracking=10)
+        self.sub_mask = sub_img
+        self.sub_mask_np = np.asarray(sub_img)
         return img
 
     def sample_targets(self, n, seed=7):
@@ -334,6 +357,7 @@ class FlowParticles:
         def fn(state, t, dt, _t0=[None]):
             if _t0[0] is None:
                 _t0[0] = t  # phase start time
+                state["ink_reset"] = True  # new target set: clear baked ink
             ts = t - _t0[0]
             e = float(_drv.energy(t)) if _drv is not None else 0.0
             # Fused kernel (Rust, numpy fallback): flow + spring + integrate.
@@ -373,18 +397,23 @@ class FlowParticles:
         self._nx = np.ascontiguousarray(nx)
         self._sweep = sweep
         self._form_dur = duration
+        # Capture per-call copies (same retarget hazard as form() had):
+        # a later form()/flock() must not redirect this phase mid-render.
+        _targ, _nx, _sw, _dur, _drv = self.targets, self._nx, sweep, duration, drive
+        _radius, _sep, _ali = float(radius), float(sep), float(ali)
 
         def fn(state, t, dt, _t0=[None]):
             if _t0[0] is None:
                 _t0[0] = t
+                state["ink_reset"] = True  # new target set: clear baked ink
             ts = t - _t0[0]
-            e = float(drive.energy(t)) if drive is not None else 0.0
-            act = smoothstep(self._nx * sweep + self._rand,
-                             self._nx * sweep + self._rand + 1.0,
+            e = float(_drv.energy(t)) if _drv is not None else 0.0
+            act = smoothstep(_nx * _sw + self._rand,
+                             _nx * _sw + self._rand + 1.0,
                              np.full(self.n, ts, np.float32))
-            flow_w = float(1.0 - smoothstep(0.0, duration * 0.7, ts) * 0.6)
+            flow_w = float(1.0 - smoothstep(0.0, _dur * 0.7, ts) * 0.6)
             # --- grid-hash neighbours (same-cell separation + alignment) ---
-            cell = np.floor(self.pos / radius).astype(np.int32)
+            cell = np.floor(self.pos / _radius).astype(np.int32)
             key = (cell[:, 0] + 64) * 512 + (cell[:, 1] + 64)
             ord_ = np.argsort(key)
             sp_, sv_ = self.pos[ord_], self.vel[ord_]
@@ -398,10 +427,10 @@ class FlowParticles:
             away = sp_ - mp
             d = np.maximum(1.0, np.linalg.norm(away, axis=1, keepdims=True))
             crowd = np.minimum(1.0, (cnt[cid, None] - 1) / 5.0)
-            f = (away / d) * crowd * sep + (mv - sv_) * ali
+            f = (away / d) * crowd * _sep + (mv - sv_) * _ali
             f = f[np.argsort(ord_)]  # back to particle order
             # --- home spring + flow ---
-            to_t = self.targets - self.pos
+            to_t = _targ - self.pos
             v_flow = flow_field(self.pos, t) * flow_w * (1.0 + e)
             k = 10.0
             self.vel += (v_flow * 0.5 + to_t * (k * act[:, None])
@@ -412,7 +441,7 @@ class FlowParticles:
             dist = float(np.linalg.norm(to_t, axis=1).mean())
             closeness = float(np.clip((150.0 - dist) / 100.0, 0.0, 1.0))
             closeness = closeness * closeness * (3 - 2 * closeness)
-            p = ts / max(1e-6, duration)
+            p = ts / max(1e-6, _dur)
             prog = float(p * p * (3 - 2 * p)) if p < 1 else 1.0
             state["text_alpha"] = min(prog, closeness) * 0.9
             state["mean_act"] = 0.4
@@ -490,7 +519,8 @@ class Scene:
 
     def __init__(self, out="demo2.mp4", fps=None, w=None, h=None,
                  mode="draft", encoder="cpu", thumbnail=True,
-                 theme="ink", motion_blur=0.0):
+                  theme="ink", motion_blur=0.0, reveal="ink",
+                  ink_gain=1.0, ink_sharp=0.45, ink_sigma=9.0):
         global W, H, FPS
         if mode in MODES:
             m = MODES[mode]
@@ -510,6 +540,11 @@ class Scene:
         self.thumbnail = thumbnail
         self.theme = THEMES.get(theme, THEMES["ink"])
         self.motion_blur = float(motion_blur)  # 0 off, ~0.5-1 streaky tails
+        self.reveal = reveal  # ink (baked by particles) | dots | solid (mask)
+        self.ink_gain = float(ink_gain)
+        self.ink_sharp = float(ink_sharp)  # smoothstep center for ink->solid
+        self.ink_sigma = float(ink_sigma)  # deposit radius: settled=ink, near=halo
+        self.ink = np.zeros((h, w), np.float32)  # persistent, never fades
         self.phases = []
         self.canvas = np.zeros((h, w), np.float32)
         self.state = {"text_alpha": 0.0, "flow_w": 1.0}
@@ -591,7 +626,42 @@ class Scene:
         img = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB")
         # soft text UNDER particles: emerges from dust instead of popping over
         a = float(self.state.get("text_alpha", 0.0))
-        if a > 0.01 and self.text_obj is not None and self.text_obj.mask is not None:
+        phase = self.state.get("phase", "")
+        if self.state.pop("ink_reset", False):
+            self.ink.fill(0)  # new form/flock target: don't ghost the old shape
+        if self.reveal == "dots":
+            a = 0.0
+        if self.reveal == "ink" and p is not None and p.targets is not None:
+            if phase == "scatter":
+                self.ink *= 0.90  # letters dissolve with the burst
+            elif phase in ("form", "flock", "hold"):
+                # bake only while shaping: drift flybys must not pre-ghost letters
+                d2 = ((p.pos - p.targets) ** 2).sum(axis=1)
+                w = (np.exp(-d2 / (2 * self.ink_sigma ** 2)).astype(np.float32)
+                     * self.ink_gain)
+                splat_vals(self.ink, xi, yi, w)
+                # saturating cap: threshold stays valid across modes/densities
+                np.clip(self.ink, 0, 1, out=self.ink)
+            if self.ink.max() > 1e-3:
+                bl = _blur3(_blur3(_blur3(self.ink)))
+                m_ink = (_ss01(self.ink_sharp - 0.25, self.ink_sharp + 0.25,
+                               np.clip(bl, 0, 1)) * 255).astype(np.uint8)
+                solid = Image.new("RGB", (self.w, self.h), th["solid"])
+                img = Image.composite(solid, img, Image.fromarray(m_ink, "L"))
+                # re-add particle sparkle on top so letters keep texture
+                img_np = np.asarray(img).astype(np.float32)
+                ink_a = _ss01(0.02, 0.2, np.clip(bl, 0, 1))
+                spark = (glow * (1 - ink_a * 0.55))[..., None] * np.array(th["spark"], np.float32)
+                img_np += spark * 0.55
+                img = Image.fromarray(np.clip(img_np, 0, 255).astype(np.uint8), "RGB")
+            # crisp subtitle under the baked title: support line stays legible
+            # (alpha is closeness-gated in form(), so no pop; dots mode zeroes a)
+            sub_m = getattr(self.text_obj, "sub_mask_np", None)
+            if a > 0.01 and sub_m is not None:
+                sm = (sub_m.astype(np.float32) / 255.0 * a * 255).astype(np.uint8)
+                solid = Image.new("RGB", (self.w, self.h), th["solid"])
+                img = Image.composite(solid, img, Image.fromarray(sm, "L"))
+        elif a > 0.01 and self.text_obj is not None and self.text_obj.mask is not None:
             m = (self.text_obj.mask_np.astype(np.float32) / 255.0 * a * 255).astype(np.uint8)
             solid = Image.new("RGB", (self.w, self.h), th["solid"])
             img = Image.composite(solid, img, Image.fromarray(m, "L"))
@@ -640,6 +710,8 @@ class Scene:
         import imageio.v2 as imageio
         os.makedirs(os.path.dirname(self.out) or ".", exist_ok=True)
         self._total = sum(p.duration for p in self.phases)
+        self.canvas.fill(0)  # fresh buffers every render (repeat-safe)
+        self.ink.fill(0)
         w = imageio.get_writer(self.out, fps=self.fps, codec="libx264",
                                quality=8, macro_block_size=2,
                                ffmpeg_params=["-pix_fmt", "yuv420p", "-movflags", "+faststart"])
@@ -654,6 +726,7 @@ class Scene:
         for ph in self.phases:
             steps = int(ph.duration * self.fps)
             for _ in range(steps):
+                self.state["phase"] = ph.name
                 ph.fn(self.state, t, dt)
                 fr = self._draw(t, frame)
                 w.append_data(fr)

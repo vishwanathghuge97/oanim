@@ -10,6 +10,8 @@ export RUSTUP_HOME="$ROOT/tmp/rustup" CARGO_HOME="$ROOT/tmp/cargo"
 export TMPDIR="$ROOT/tmp" PIP_CACHE_DIR="$ROOT/tmp/pip-cache"
 export PATH="$CARGO_HOME/bin:$PATH"
 BUILD_PY="$ROOT/tmp/uv-python/cpython-3.14.7-linux-x86_64-gnu/bin/python3"
+cd "$ROOT/rust-core"
 "$ROOT/.venv/bin/maturin" build --release -i "$BUILD_PY" --out "$ROOT/tmp/wheels"
+cd "$ROOT"
 "$ROOT/.venv/bin/pip" install --no-input --force-reinstall "$ROOT"/tmp/wheels/oanim_core-*.whl
 "$ROOT/.venv/bin/python" bench/bench_splat.py

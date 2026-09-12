@@ -102,3 +102,60 @@
   over 2s — hero gives growth acts 2.6–2.8s.
 * Parity re-verified after fixes: frames 0–120 bit-identical rust-vs-numpy,
   late sparkle grain ≤29 (same known 1e-4 drift, visually identical).
+
+## 2026-09-12 — Ink reveal landing (particle-baked letters, default on)
+
+* Uncommitted draft found: `Scene(reveal="ink"|"dots"|"solid")` + `splat_vals`
+  kernel + persistent `self.ink` buffer baked by settled particles
+  (`w=gain*exp(-d²/2σ²)`, triple `_blur3`, smoothstep to solid, sparkle on top).
+  Finished + fixed it; no Rust change needed (`splat_vals` reuses `splat_add`).
+* Bench: splat 34-48x exact; step 0.8-1.0x, ≤1.2e-04 (unchanged, green).
+  `splat_vals` parity: bit-exact vs `np.add.at` @1500/10000 + fallback path.
+* **Bugs found in draft, all fixed (`engine/api.py`):**
+  1. Drift pre-ghost — deposits ran in every phase, so chance flybys hazed
+     letters before form. Fix: bake only in form/flock/hold (drift ink ≡ 0).
+  2. Unbounded accumulation — ink max hit 79, threshold meaningless across
+     modes (final = 9x pixels would starve). Fix: `clip(ink,0,1)` per frame.
+     Gain/σ grid (6-12 × 1.2-4.0) confirmed structural, not parametric.
+  3. Wasted composite — blur+composite ran on empty ink every drift frame.
+     Fix: skip when `ink.max() < 1e-3`.
+  4. Multi-form ghost — bloom ink persisted under tree (same-scene form→form).
+     Fix: form/flock closures set `state["ink_reset"]` on first step;
+     `_draw` consumes it (`ink.fill(0)`). Verified: tree frame has no disc.
+  5. Subtitle lost — 24px strokes can't bake from sparse ink (subt med 0.12
+     vs title 0.57). Fix: `Text` now stores `sub_mask_np`; ink mode composites
+     it crisply at closeness-gated `text_alpha` (dots mode zeroes it).
+  6. `flock()` retarget hazard (log-noted): captured per-call copies
+     (`_targ/_nx/_sw/_dur/_drv/_radius/_sep/_ali`) like `form()`.
+* Verification: draft demo2 7.3s (ink path ~2x baseline 3.3s — blur+composite
+  per form/hold frame; future fuse target), raw-frame rust-vs-numpy 64/64
+  bit-identical incl. scatter dissolve, CLI preview OK (note: must run as
+  `./.venv/bin/python oanim ...` — system python3 lacks imageio),
+  all 8 showcase clips + hero ActGrowth frame-checked (flock ink+subtitle,
+  scatter clean dissolve, bloom disc, tree no-ghost). `solid`/`dots` compat OK.
+* Look: textured baked-ink title + crisp subtitle + sparkle; reveal still
+  left-to-right, no pop. `demo2.png` regenerated.
+
+## 2026-09-12 — Ink tuning + full close-out (defaults locked, verified, pushed)
+
+* `tmp/` sprawl cleaned by user (52-frame dumps breached image-review budget).
+  New protocol: max 3 mp4s + ≤4 PNGs per check, numeric-first, view ≤4.
+* **Fix: `rust-core/rebuild.sh`.** maturin ran from repo root → `Can't find
+  Cargo.toml`. Fix: `cd "$ROOT/rust-core"` before build, back after. Rebuild OK.
+* Bench today: splat **42.8x@n1500, 42.3x@n4000, 37.6x@n10000** exact
+  (2.4e-07 @10000); step **1.2x/1.0x/1.0x**, maxdpos 1.22e-04 (green).
+* A/B/C re-rendered (preview, `GROWTH`): ink vs dots meandiff 8.9, ink vs
+  solid 6.4, dots vs solid 5.0 (max ~234) — modes genuinely diverge. Dots too
+  faint standalone, solid flat; ink stays default.
+* Ink tuning probe (solid-fill/spill vs mask): early-form fill ≈ 0.0 all
+  settings (no pre-ghost ✓). Grid: 1.2/0.35 → 0.69/0.024 (blotchy);
+  1.0/0.50 → 0.45/0.010; locked **`ink_gain=1.0, ink_sharp=0.45`**
+  (~0.5 fill, ~0.014 spill). 4 frames viewed (A/B/C + tuned).
+* **Fix: `oanim` shebang** (`/usr/bin/env python3` = system py, no imageio).
+  Now `#!/home/vishwanath/Desktop/exp/.venv/bin/python` — `./oanim render
+  scenes/template.py --mode preview` works directly, CLI verified.
+* Full verification: draft `demo2.py` 7.1s wall; fallback mp4 compare
+  frames 0–120 bit-identical, late grain ≤24 (known 1e-4 drift); all 8
+  showcase clips healthy (last-mean 12–18, max 255); hero re-rendered under
+  final defaults — 25.3s, 26.7M, 38s wall. `demo2.png` + `hero.png`
+  regenerated, both visually checked (textured, readable).
