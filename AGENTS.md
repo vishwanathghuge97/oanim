@@ -37,6 +37,14 @@ Read `README.md` and `logs/SESSION_LOG.md` before changing anything.
   spring (k≈46, c≈7.2), flow decays over first 60% of `form()`. Text reveal alpha =
   `min(progress, closeness)` where closeness tracks actual mean particle distance —
   never time-only (that caused the old "ghost pop").
+* `Targets` base (`Bloom`/`Branch`/`DLA`/`Text`): `sample_targets()` + optional
+  `order` array for reveal sequence; `mask=None` skips the solid-text composite.
+  `form()`/`flock()` accept any Targets. Particle arrays must stay C-contiguous
+  float32 (Rust slices) — never store `.T` views in `pos`/`vel`/`targets`.
+* `engine/audio.py` is dep-free (ffmpeg PCM pipe + numpy RMS). `Scene._draw`
+  reads `state["energy"]`; phases set it from `drive.energy(t)` or leave 0.
+* Themes live in `THEMES` (`ink` default); `_draw` derives all colors from them.
+  `motion_blur` adds a second tail stamp along `-vel` (0 = off, keeps parity).
 * `Camera` is a 2.5D crop-zoom applied post-composite in `_draw` (~2ms/frame).
 * VAAPI encode is dead on this Mesa (no encode profiles) — don't re-add it without
   re-testing `ffmpeg ... -c:v h264_vaapi` on a testsrc first.

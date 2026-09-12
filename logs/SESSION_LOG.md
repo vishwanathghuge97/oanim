@@ -62,3 +62,26 @@
   (Pillow colormap/composite + x264 dominate). Next high-value Rust targets:
   colormap+composite fusion, or `flock()` O(n²) neighbor search. Do NOT chase
   trig micro-opts further.
+
+## 2026-09-12 — Full feature landing (one session)
+
+* Core: `form(k, c)` tuning, `scatter()` burst-outro (radial kick + flow, alpha
+  decays), 4 `THEMES` (ink/ember/bone/moss, `_draw` fully theme-driven),
+  `motion_blur` tail stamp along `-vel` (0 = off, parity-safe).
+* `step_form` gained `boost` (audio energy → flow strength); rebuilt wheel.
+* `engine/audio.py` (dep-free): `AudioDrive` (ffmpeg PCM → RMS envelope,
+  beats ~1.0) + `SineDrive` (bpm pulse). `drift`/`form`/`scatter`/`flock` take
+  `drive=`; `_draw` brightens stamps with `state["energy"]`.
+* `Scene.render_loop(blend)` crossfades tail→head for seamless ambient loops.
+  Verified first-last meandiff 1.57/255 (no pop). Fixed `LoopClip.render`
+  override bug (overrode `render` while `render_loop` calls it → RecursionError).
+* `Targets` base: `Bloom` (phyllotaxis, jitter 0.8/scale 0.46 after formless-cloud
+  fix), `Branch` (recursive tree, trunk-first weighting fix, depth 7),
+  `DLA` (batched walks + kill radius: gen 60s → 0.2s for 900 sticks; empty-grid
+  guard). `form()` uses `order` attr when present, else x-sweep.
+* `flock()`: grid-hash boids (same-cell separation + alignment, weak home spring).
+  Verified: FLOCK/TOGETHER crisp with living dust.
+* `scenes/showcase.py`: 8 preview clips (ember/scatter/bloom/branch/dla/flock/
+  drive/loop), all frame-checked. README recipes added.
+* Bench stays green (splat 36-43x exact; step 1.5x, ≤1.2e-04). Full draft +
+  fallback + CLI preview re-verified after every engine change.

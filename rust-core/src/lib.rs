@@ -106,6 +106,7 @@ fn step_form(
     form_dur: f32,
     k: f32,
     c: f32,
+    boost: f32,
 ) -> PyResult<(f32, f32)> {
     let pos_s = pos.as_slice_mut()?;
     let vel_s = vel.as_slice_mut()?;
@@ -146,10 +147,12 @@ fn step_form(
             let act = sstep(a0, a0 + 0.7, ts);
             let fx = ((y * 0.012 + tg * 0.9).sin() + 0.5 * ((x + y) * 0.006 - tg * 0.6).sin())
                 * 55.0
-                * flow_w;
+                * flow_w
+                * boost;
             let fy = ((x * 0.011 - tg * 0.7).cos() + 0.5 * ((x - y) * 0.007 + tg * 0.5).cos())
                 * 55.0
-                * flow_w;
+                * flow_w
+                * boost;
             let dx = tx - x;
             let dy = ty - y;
             let ka = k * act;

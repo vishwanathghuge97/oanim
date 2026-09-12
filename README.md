@@ -49,6 +49,24 @@ class MyVideo(Scene):
 `preview` 640x360@15 · `draft` 960x540@30 · `final` 1920x1080@30 · `short` 720x1280@30.
 Every render also writes a `.png` thumbnail next to the mp4.
 
+## Recipes (copy-paste)
+
+Hook intro (ember + streaks + push-in):
+```python
+self = MyScene(out="intro.mp4", mode="draft", theme="ember", motion_blur=0.6)
+# ... attach Camera().push_in(1.0, 1.07).handheld(1.5)
+self.play(dots.drift(1.6)); self.play(dots.form(title, 2.6)); self.play(self.hold(1.0))
+```
+Section card: `Text("CHAPTER 2", weight="Thin", tracking=20)` + `form(..., sweep=1.2)`.
+Subscribe outro: `form()` then `scatter(1.4, power=340)` back into flow.
+Flock title: `dots.flock(title, 3.0)` instead of `form()` — streaming boids.
+Growth interstitials: `form(Bloom())`, `form(Branch(depth=7))`, `form(DLA(sticks=900))`.
+Beat-synced: `drv = SineDrive(bpm=132)` (or `AudioDrive("vo.wav")`), pass `drive=drv`
+to `drift`/`form`; brightness + flow follow energy. No extra deps (ffmpeg + numpy).
+Ambient bed: `drift(60)` + `render_loop(blend=0.6)` for a seamless loop.
+Stiffer/softer settle: `form(..., k=60, c=9)` snappy, `k=28, c=5.5` jelly.
+All showcase clips: `./.venv/bin/python scenes/showcase.py` (preview, in `tmp/`).
+
 ## Environment facts (do not assume otherwise)
 
 * No dGPU. AMD 680M iGPU, Mesa has **no VAAPI encode profiles** — CPU libx264 is the path.

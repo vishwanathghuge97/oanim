@@ -16,6 +16,18 @@ MODES = {
     "short": {"w": 720, "h": 1280, "fps": 30},  # 9:16 vertical
 }
 
+# Color themes: (bg, ramp0, ramp1, solid_text, spark). ramps blend glow->white.
+THEMES = {
+    "ink":   {"bg": (10, 14, 20), "r0": (40, 150, 160), "r1": (255, 255, 255),
+              "solid": (228, 238, 250), "spark": (120, 200, 210)},
+    "ember": {"bg": (16, 8, 6), "r0": (200, 70, 20), "r1": (255, 236, 210),
+              "solid": (255, 240, 228), "spark": (255, 150, 70)},
+    "bone":  {"bg": (12, 12, 14), "r0": (120, 120, 130), "r1": (250, 250, 245),
+              "solid": (245, 245, 240), "spark": (200, 200, 195)},
+    "moss":  {"bg": (6, 12, 8), "r0": (40, 140, 70), "r1": (235, 255, 235),
+              "solid": (225, 245, 225), "spark": (120, 220, 130)},
+}
+
 
 def smoothstep(a, b, x):
     a = np.asarray(a, dtype=np.float32)
@@ -54,7 +66,150 @@ def _draw_tracked(d, center_x, y, text, font, fill, tracking=10):
     return total
 
 
-class Text:
+class Targets:
+    """Anything particles can form: text, blooms, branches, DLA clusters.
+    Subclasses provide sample_targets(); order attr (0..1) optionally sets
+    reveal sequence (default: left-to-right sweep). mask None = no solid text."""
+
+    mask = None
+    mask_np = None
+    order = None
+
+    def render_mask(self):
+        return None
+
+    def sample_targets(self, n, seed=7):
+        raise NotImplementedError
+
+
+class Bloom(Targets):
+    """Phyllotaxis spiral bloom. Center-out growth, no text."""
+
+    def __init__(self, scale=0.40, jitter=2.0, seed=7):
+        self.scale, self.jitter, self.seed = scale, jitter, seed
+
+    def sample_targets(self, n, seed=7):
+        rng = np.random.default_rng(seed)
+        i = np.arange(n, dtype=np.float32)
+        ga = np.pi * (3.0 - np.sqrt(5.0))
+        r = np.sqrt((i + 0.5) / n) * min(W, H) * self.scale
+        th = i * ga
+        x = W / 2 + r * np.cos(th) + rng.normal(0, self.jitter, n)
+        y = H / 2 + r * np.sin(th) * 0.62 + rng.normal(0, self.jitter, n)
+        self.order = np.ascontiguousarray((i / max(1, n - 1)).astype(np.float32))
+        return np.ascontiguousarray(np.stack([x, y], axis=1).astype(np.float32))
+
+
+class Branch(Targets):
+    """Recursive branching tree grown from bottom-center. Depth-ordered reveal."""
+
+    def __init__(self, depth=9, spread=0.55, shrink=0.74, seed=7):
+        self.depth, self.spread, self.shrink, self.seed = depth, spread, shrink, seed
+
+    def sample_targets(self, n, seed=7):
+        rng = np.random.default_rng(seed)
+        segs = []  # (x0,y0,x1,y1,depth)
+        stack = [(W / 2, H * 0.96, -np.pi / 2, H * 0.30, 0)]
+        while stack:
+            x, y, ang, ln, d = stack.pop()
+            x1, y1 = x + np.cos(ang) * ln, y + np.sin(ang) * ln
+            segs.append((x, y, x1, y1, d))
+            if d < self.depth:
+                for s in (-1, 1):
+                    na = ang + s * (self.spread * (0.6 + 0.8 * rng.random()))
+                    stack.append((x1, y1, na, ln * self.shrink * (0.85 + 0.3 * rng.random()), d + 1))
+        segs = np.array(segs, dtype=np.float32)
+        maxd = max(1.0, segs[:, 4].max())
+        # trunk-first weighting: thick base, delicate tips
+        wgt = (maxd - segs[:, 4] + 2.0)
+        per = np.maximum(1, (n * wgt / wgt.sum()).astype(int))
+        pts, ord_ = [], []
+        for (x0, y0, x1, y1, d), k in zip(segs, per):
+            f = rng.random(k).astype(np.float32)
+            pts.append(np.stack([x0 + (x1 - x0) * f, y0 + (y1 - y0) * f], axis=1))
+            ord_.append(np.full(k, d / maxd, np.float32))
+        pts = np.concatenate(pts)[:n]
+        ord_ = np.concatenate(ord_)[:n]
+        if len(pts) < n:  # pad with jittered copies
+            pad = rng.integers(0, len(pts), n - len(pts))
+            pts = np.concatenate([pts, pts[pad] + rng.normal(0, 2, (len(pad), 2))])
+            ord_ = np.concatenate([ord_, ord_[pad]])
+        self.order = np.ascontiguousarray(ord_.astype(np.float32))
+        return np.ascontiguousarray(pts.astype(np.float32))
+
+
+class DLA(Targets):
+    """Diffusion-limited aggregation cluster (lightning/coral). Stick-ordered."""
+
+    def __init__(self, sticks=2200, seed=7):
+        self.sticks, self.seed = sticks, seed
+
+    def sample_targets(self, n, seed=7):
+        rng = np.random.default_rng(seed)
+        gw, gh = 288, 162
+        grid = np.zeros((gh, gw), bool)
+        cx, cy = gw // 2, gh // 2
+        grid[cy, cx] = True
+        pts = []
+        radius = 3.0
+        batch = 500
+        stuck = 0
+        guard = 0
+        while stuck < self.sticks and guard < 600:
+            guard += 1
+            r0 = radius + 6.0
+            a = rng.random(batch) * 2 * np.pi
+            px = (cx + r0 * np.cos(a)).astype(int).clip(1, gw - 2)
+            py = (cy + r0 * np.sin(a)).astype(int).clip(1, gh - 2)
+            live = np.ones(batch, bool)
+            for _ in range(150):
+                if not live.any():
+                    break
+                step = rng.integers(0, 4, batch)
+                dx = np.where(step == 0, 1, np.where(step == 1, -1, 0))
+                dy = np.where(step == 2, 1, np.where(step == 3, -1, 0))
+                px[live] = (px[live] + dx[live]).clip(1, gw - 2)
+                py[live] = (py[live] + dy[live]).clip(1, gh - 2)
+                # kill strays far outside (classic DLA)
+                far = (px - cx) ** 2 + (py - cy) ** 2 > (3 * r0 + 20) ** 2
+                live[far] = False
+                lx = px[live]
+                ly = py[live]
+                hit = grid[ly - 1, lx] | grid[ly + 1, lx] | grid[ly, lx - 1] | grid[ly, lx + 1]
+                idx = np.nonzero(live)[0][hit]
+                new = [(px[j], py[j]) for j in idx if not grid[py[j], px[j]]]
+                for jx, jy in new:
+                    grid[jy, jx] = True
+                    pts.append((jx, jy))
+                if new:
+                    dd = max((jx - cx) ** 2 + (jy - cy) ** 2 for jx, jy in new)
+                    radius = max(radius, float(np.sqrt(dd)) + 2.0)
+                live[idx] = False
+                stuck += len(new)
+                if stuck >= self.sticks:
+                    break
+        if not pts:  # degenerate fallback: small disc
+            a = rng.random(max(n, 64)) * 2 * np.pi
+            r = rng.random(max(n, 64)) * 8
+            pts = list(zip((cx + r * np.cos(a)).astype(int),
+                           (cy + r * np.sin(a)).astype(int)))
+        pts = np.array(pts, dtype=np.float32)
+        sx, sy = W / gw, H / gh
+        pts[:, 0] *= sx
+        pts[:, 1] *= sy
+        order = np.linspace(0, 1, len(pts)).astype(np.float32)
+        if len(pts) >= n:
+            sel = np.linspace(0, len(pts) - 1, n).astype(int)
+            pts, order = pts[sel], order[sel]
+        else:
+            pad = rng.integers(0, len(pts), n - len(pts))
+            pts = np.concatenate([pts, pts[pad] + rng.normal(0, 2, (len(pad), 2))])
+            order = np.concatenate([order, order[pad]])
+        self.order = np.ascontiguousarray(order)
+        return np.ascontiguousarray(pts.astype(np.float32))
+
+
+class Text(Targets):
     """What the particles will become. User only sets strings."""
 
     def __init__(self, title, subtitle="ORGANIC MOTION", seed=7,
@@ -138,40 +293,51 @@ class FlowParticles:
         self.targets = None
         self.t0 = None       # per-particle activation time (set in form())
         self.text = None
+        self._nx = None
         self._rand = rng.uniform(0, 0.55, n).astype(np.float32)
 
-    def drift(self, duration=1.8):
+    def drift(self, duration=1.8, drive=None):
         def fn(state, t, dt):
-            v = flow_field(self.pos, t)
+            e = float(drive.energy(t)) if drive is not None else 0.0
+            v = flow_field(self.pos, t) * (1.0 + 1.6 * e)
             self.vel += v * 0.35 * dt
             self.vel *= 0.93
             sp = np.linalg.norm(self.vel, axis=1, keepdims=True)
-            self.vel *= np.minimum(1.0, 420.0 / np.maximum(sp, 1e-6))
+            self.vel *= np.minimum(1.0, (420.0 + 300.0 * e) / np.maximum(sp, 1e-6))
             self.pos += self.vel * dt
             state["flow_w"] = 1.0
             state["text_alpha"] = 0.0
+            state["energy"] = e
         return _Phase("drift", duration, fn)
 
-    def form(self, text, duration=2.4, sweep=1.1):
+    def form(self, text, duration=2.4, sweep=1.1, k=46.0, c=7.2, drive=None):
         if text.mask_np is None:
             text.render_mask()
         self.text = text
         self.targets = text.sample_targets(self.n, seed=self.seed)
-        # sweep left->right + random: letters crystallize in order, not all at once
-        xs = self.targets[:, 0]
-        nx = ((xs - xs.min()) / max(1.0, xs.max() - xs.min())).astype(np.float32)
+        # Reveal order: target-provided (growth sequence) or left-to-right sweep.
+        if getattr(text, "order", None) is not None and len(text.order) == self.n:
+            nx = text.order.astype(np.float32)
+        else:
+            xs = self.targets[:, 0]
+            nx = ((xs - xs.min()) / max(1.0, xs.max() - xs.min())).astype(np.float32)
         self._nx = np.ascontiguousarray(nx)
         self._sweep = sweep
         self._form_dur = duration
+        self._form_k = float(k)
+        self._form_c = float(c)
+        self._drive = drive
 
         def fn(state, t, dt, _t0=[None]):
             if _t0[0] is None:
                 _t0[0] = t  # phase start time
             ts = t - _t0[0]
+            e = float(drive.energy(t)) if drive is not None else 0.0
             # Fused kernel (Rust, numpy fallback): flow + spring + integrate.
             mean_act, dist = step_form(
                 self.pos, self.vel, self.targets, self._nx, self._rand,
-                ts, t, dt, self._sweep, self._form_dur)
+                ts, t, dt, self._sweep, self._form_dur,
+                k=self._form_k, c=self._form_c, boost=1.0 + 1.2 * e)
             # convergence-driven text reveal: ghost only when dust arrives
             # 0 far -> 1 close, smooth
             closeness = float(np.clip((130.0 - dist) / 85.0, 0.0, 1.0))
@@ -184,7 +350,102 @@ class FlowParticles:
                 1.0 - smoothstep(0.0, self._form_dur * 0.6, ts) * 0.95)
             state["text_alpha"] = alpha
             state["mean_act"] = float(mean_act)
+            state["energy"] = e
         return _Phase("form", duration, fn)
+
+    def flock(self, text, duration=3.0, sweep=1.0, drive=None,
+              radius=26.0, sep=90.0, ali=0.9):
+        """Boids that stream toward the target shape: separation + alignment
+        on a uniform grid, weak spring home, living flow. Accepts Text/Targets."""
+        if text.mask_np is None:
+            text.render_mask()
+        self.text = text
+        self.targets = text.sample_targets(self.n, seed=self.seed)
+        if getattr(text, "order", None) is not None and len(text.order) == self.n:
+            nx = text.order.astype(np.float32)
+        else:
+            xs = self.targets[:, 0]
+            nx = ((xs - xs.min()) / max(1.0, xs.max() - xs.min())).astype(np.float32)
+        self._nx = np.ascontiguousarray(nx)
+        self._sweep = sweep
+        self._form_dur = duration
+
+        def fn(state, t, dt, _t0=[None]):
+            if _t0[0] is None:
+                _t0[0] = t
+            ts = t - _t0[0]
+            e = float(drive.energy(t)) if drive is not None else 0.0
+            act = smoothstep(self._nx * sweep + self._rand,
+                             self._nx * sweep + self._rand + 1.0,
+                             np.full(self.n, ts, np.float32))
+            flow_w = float(1.0 - smoothstep(0.0, duration * 0.7, ts) * 0.6)
+            # --- grid-hash neighbours (same-cell separation + alignment) ---
+            cell = np.floor(self.pos / radius).astype(np.int32)
+            key = (cell[:, 0] + 64) * 512 + (cell[:, 1] + 64)
+            ord_ = np.argsort(key)
+            sp_, sv_ = self.pos[ord_], self.vel[ord_]
+            _, _, cnt = np.unique(key[ord_], return_index=True, return_counts=True)
+            cid = np.repeat(np.arange(len(cnt)), cnt)
+            sump = np.zeros_like(sp_)
+            sumv = np.zeros_like(sv_)
+            np.add.at(sump, cid, sp_)
+            np.add.at(sumv, cid, sv_)
+            mp, mv = sump / cnt[cid, None], sumv / cnt[cid, None]
+            away = sp_ - mp
+            d = np.maximum(1.0, np.linalg.norm(away, axis=1, keepdims=True))
+            crowd = np.minimum(1.0, (cnt[cid, None] - 1) / 5.0)
+            f = (away / d) * crowd * sep + (mv - sv_) * ali
+            f = f[np.argsort(ord_)]  # back to particle order
+            # --- home spring + flow ---
+            to_t = self.targets - self.pos
+            v_flow = flow_field(self.pos, t) * flow_w * (1.0 + e)
+            k = 10.0
+            self.vel += (v_flow * 0.5 + to_t * (k * act[:, None])
+                         + f - self.vel * (3.0 * act[:, None] + 0.5)) * dt
+            sp = np.linalg.norm(self.vel, axis=1, keepdims=True)
+            self.vel *= np.minimum(1.0, 380.0 / np.maximum(sp, 1e-6))
+            self.pos += self.vel * dt
+            dist = float(np.linalg.norm(to_t, axis=1).mean())
+            closeness = float(np.clip((150.0 - dist) / 100.0, 0.0, 1.0))
+            closeness = closeness * closeness * (3 - 2 * closeness)
+            p = ts / max(1e-6, duration)
+            prog = float(p * p * (3 - 2 * p)) if p < 1 else 1.0
+            state["text_alpha"] = min(prog, closeness) * 0.9
+            state["mean_act"] = 0.4
+            state["energy"] = e
+        return _Phase("flock", duration, fn)
+
+    def scatter(self, duration=1.6, sweep=0.8, power=300.0, drive=None):
+        """Reverse of form: letters burst back into flow. Needs form() first
+        (uses its targets); otherwise bursts from screen center."""
+        cx, cy = W / 2, H / 2
+
+        def fn(state, t, dt, _t0=[None]):
+            if _t0[0] is None:
+                _t0[0] = t
+            ts = t - _t0[0]
+            e = float(drive.energy(t)) if drive is not None else 0.0
+            if self.targets is not None:
+                nx = self._nx if self._nx is not None else np.zeros(self.n, np.float32)
+            else:
+                nx = np.zeros(self.n, np.float32)
+            rel = 1.0 - smoothstep(nx * sweep + self._rand * 0.5,
+                                   nx * sweep + self._rand * 0.5 + 0.8,
+                                   np.full(self.n, ts, np.float32))
+            dx = self.pos[:, 0] - cx
+            dy = self.pos[:, 1] - cy
+            d = np.maximum(1.0, np.sqrt(dx * dx + dy * dy))
+            v = flow_field(self.pos, t) * (1.2 + e)
+            self.vel += ((v * 0.4
+                          + np.stack([dx / d, dy / d], axis=1) * (power * rel)[:, None]
+                          - self.vel * (2.0 * rel[:, None] + 0.4)) * dt)
+            self.pos += self.vel * dt
+            p = ts / max(1e-6, duration)
+            state["text_alpha"] = max(0.0, state.get("text_alpha", 0.0) - dt / max(0.3, duration * 0.5))
+            state["mean_act"] = 0.25
+            state["energy"] = e
+            _ = p
+        return _Phase("scatter", duration, fn)
 
     def settle_jitter(self, t):
         # tiny breathing so final frame feels alive, not frozen
@@ -224,7 +485,8 @@ class Scene:
     """User subclasses this and writes construct() with self.play() calls."""
 
     def __init__(self, out="demo2.mp4", fps=None, w=None, h=None,
-                 mode="draft", encoder="cpu", thumbnail=True):
+                 mode="draft", encoder="cpu", thumbnail=True,
+                 theme="ink", motion_blur=0.0):
         global W, H, FPS
         if mode in MODES:
             m = MODES[mode]
@@ -242,6 +504,8 @@ class Scene:
         self.mode = mode
         self.encoder = encoder
         self.thumbnail = thumbnail
+        self.theme = THEMES.get(theme, THEMES["ink"])
+        self.motion_blur = float(motion_blur)  # 0 off, ~0.5-1 streaky tails
         self.phases = []
         self.canvas = np.zeros((h, w), np.float32)
         self.state = {"text_alpha": 0.0, "flow_w": 1.0}
@@ -293,6 +557,9 @@ class Scene:
 
     def _draw(self, t, frame):
         p = self.particles
+        th = self.theme
+        # energy drive (audio): brighter stamps + longer trails on beats
+        e = float(self.state.get("energy", 0.0))
         # fade: faster mid-settle so trails don't smear letters
         mean_act = self.state.get("mean_act", 0.0)
         fade = 0.90 if mean_act < 0.7 else 0.84
@@ -300,25 +567,33 @@ class Scene:
         if p is not None:
             xi = np.clip(p.pos[:, 0].astype(np.int32), 0, self.w - 1)
             yi = np.clip(p.pos[:, 1].astype(np.int32), 0, self.h - 1)
-            b = 1.15 if mean_act < 0.7 else 0.5
+            b = (1.15 if mean_act < 0.7 else 0.5) * (1.0 + 0.8 * e)
             g = 0.22 if frame % 2 == 0 else 0.0
             splat(self.canvas, xi, yi, b, glow=g)
+            if self.motion_blur > 0 and hasattr(p, "vel"):
+                tx = np.clip((p.pos[:, 0] - p.vel[:, 0] * (1 / max(1, self.fps))
+                               * 1.5 * self.motion_blur).astype(np.int32),
+                              0, self.w - 1)
+                ty = np.clip((p.pos[:, 1] - p.vel[:, 1] * (1 / max(1, self.fps))
+                               * 1.5 * self.motion_blur).astype(np.int32),
+                              0, self.h - 1)
+                splat(self.canvas, tx, ty, b * 0.45)
         np.clip(self.canvas, 0, 4, out=self.canvas)
         glow = np.clip(self.canvas / 3.0, 0, 1)
-        rgb = np.zeros((self.h, self.w, 3), np.float32)
-        rgb[..., 0] = 10 + glow * (40 + 215 * glow)
-        rgb[..., 1] = 14 + glow * (150 + 105 * glow)
-        rgb[..., 2] = 20 + glow * (160 + 95 * glow)
+        bg = np.array(th["bg"], np.float32)
+        r0 = np.array(th["r0"], np.float32) - bg
+        r1 = np.array(th["r1"], np.float32) - bg - r0
+        rgb = bg[None, None, :] + glow[..., None] * (r0[None, None, :] + glow[..., None] * r1[None, None, :])
         img = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB")
         # soft text UNDER particles: emerges from dust instead of popping over
         a = float(self.state.get("text_alpha", 0.0))
         if a > 0.01 and self.text_obj is not None and self.text_obj.mask is not None:
             m = (self.text_obj.mask_np.astype(np.float32) / 255.0 * a * 255).astype(np.uint8)
-            solid = Image.new("RGB", (self.w, self.h), (228, 238, 250))
+            solid = Image.new("RGB", (self.w, self.h), th["solid"])
             img = Image.composite(solid, img, Image.fromarray(m, "L"))
             # re-add particle sparkle on top so letters keep texture
             img_np = np.asarray(img).astype(np.float32)
-            spark = (glow * (1 - a * 0.55))[..., None] * np.array([120, 200, 210], np.float32)
+            spark = (glow * (1 - a * 0.55))[..., None] * np.array(th["spark"], np.float32)
             img_np += spark * 0.55
             img = Image.fromarray(np.clip(img_np, 0, 255).astype(np.uint8), "RGB")
         d = ImageDraw.Draw(img)
@@ -391,3 +666,26 @@ class Scene:
             except Exception as e:
                 print("thumb skip:", e)
         return self._maybe_vaapi()
+
+    def render_loop(self, blend=0.6):
+        """Render, then crossfade tail into head for a seamless ambient loop."""
+        out = self.render()
+        import imageio.v2 as imageio
+        r = imageio.get_reader(out)
+        frames = [f for f in r]
+        r.close()
+        k = min(len(frames) - 1, max(2, int(blend * self.fps)))
+        for i in range(k):
+            a = (i + 1) / (k + 1)
+            frames[i] = (frames[i].astype(np.float32) * a
+                         + frames[len(frames) - k + i].astype(np.float32) * (1 - a)
+                         ).astype(np.uint8)
+        frames = frames[:-k] if k else frames
+        w = imageio.get_writer(out, fps=self.fps, codec="libx264",
+                               quality=8, macro_block_size=2,
+                               ffmpeg_params=["-pix_fmt", "yuv420p", "-movflags", "+faststart"])
+        for f in frames:
+            w.append_data(f)
+        w.close()
+        print("LOOP", out, f"({len(frames)} frames, {blend}s xfade)")
+        return out
